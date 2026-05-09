@@ -68,23 +68,26 @@ export default function AdminDashboard() {
         throw new Error('Failed to load profiles.')
       }
 
-      // Fetch all invoices
+      // Fetch all invoices without PostgREST joins to avoid Foreign Key errors
       const { data: allInvoices, error: allInvoicesError } = await supabase
         .from('invoices')
-        .select('id, invoice_number, status, total, created_at, profiles(email)')
+        .select('id, invoice_number, status, total, created_at, user_id')
         .order('created_at', { ascending: false })
 
       if (allInvoicesError) {
-        throw new Error('Failed to load invoices.')
+        throw new Error('Failed to load invoices: ' + allInvoicesError.message)
       }
 
       setProfiles((allProfiles as Profile[]) || [])
       
-      // Map the nested profiles response gracefully
-      const formattedInvoices = (allInvoices || []).map(inv => ({
-        ...inv,
-        profiles: Array.isArray(inv.profiles) ? inv.profiles[0] : inv.profiles
-      })) as AdminInvoice[]
+      // Map the emails locally using the allProfiles data we just fetched
+      const formattedInvoices = (allInvoices || []).map(inv => {
+        const ownerProfile = allProfiles?.find(p => p.id === inv.user_id)
+        return {
+          ...inv,
+          profiles: { email: ownerProfile?.email || 'Unknown User' }
+        }
+      }) as AdminInvoice[]
       
       setInvoices(formattedInvoices)
       

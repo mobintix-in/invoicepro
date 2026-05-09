@@ -5,10 +5,10 @@
 create or replace function public.is_admin()
 returns boolean as $$
 declare
-  is_admin boolean;
+  v_is_admin boolean;
 begin
-  select (role = 'admin') into is_admin from public.profiles where id = auth.uid();
-  return coalesce(is_admin, false);
+  select (role = 'admin') into v_is_admin from public.profiles where id = auth.uid();
+  return coalesce(v_is_admin, false);
 end;
 $$ language plpgsql security definer;
 
