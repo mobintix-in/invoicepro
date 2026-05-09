@@ -10,16 +10,35 @@ export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<{ role: string } | null>(null)
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
 
     const supabase = createClient()
 
-    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    async function fetchUserAndProfile() {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+      if (user) {
+        const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        setProfile(data)
+      } else {
+        setProfile(null)
+      }
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+    fetchUserAndProfile()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
+      if (currentUser) {
+        const { data } = await supabase.from('profiles').select('role').eq('id', currentUser.id).single()
+        setProfile(data)
+      } else {
+        setProfile(null)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -69,6 +88,19 @@ export default function Navbar() {
             >
               Invoices
             </Link>
+
+            {profile?.role === 'admin' && (
+              <Link
+                href="/admin"
+                className={`hidden sm:block text-sm font-medium transition-colors ${
+                  pathname === '/admin'
+                    ? 'text-indigo-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Admin
+              </Link>
+            )}
 
             <Link
               href="/invoices/new"

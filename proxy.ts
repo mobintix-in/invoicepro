@@ -1,26 +1,59 @@
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
+export async function proxy(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request })
 
-  // Supabase SSR stores the session in cookies named sb-<project-ref>-auth-token
-  const isAuthenticated = request.cookies.getAll().some(
-    (c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token')
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
   )
 
-  if (!isAuthenticated && pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', request.url))
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { pathname } = request.nextUrl
+
+  if (!user && pathname !== '/login') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    const redirectResponse = NextResponse.redirect(url)
+    
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, { ...cookie })
+    })
+    
+    return redirectResponse
   }
 
-  if (isAuthenticated && pathname === '/login') {
-    return NextResponse.redirect(new URL('/', request.url))
+  if (user && pathname === '/login') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    const redirectResponse = NextResponse.redirect(url)
+    
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, { ...cookie })
+    })
+    
+    return redirectResponse
   }
 
-  return NextResponse.next()
+  return supabaseResponse
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }
