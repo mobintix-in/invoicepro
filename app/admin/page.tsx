@@ -18,7 +18,7 @@ type AdminInvoice = {
   id: string
   invoice_number: string
   status: 'draft' | 'sent' | 'paid' | 'overdue'
-  total: number
+  total: number 
   created_at: string
   profiles?: { email: string }
 }
