@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { createClient, isSupabaseConfigured } from '@/app/lib/supabase/client'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 
 export default function Navbar() {
@@ -58,17 +58,28 @@ export default function Navbar() {
             <span className="text-base font-semibold text-gray-900">InvoicePro</span>
           </Link>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className={`hidden sm:block text-sm font-medium transition-colors ${
-                pathname === '/'
-                  ? 'text-indigo-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Invoices
-            </Link>
+          <div className="flex items-center gap-4">
+            {[
+              { name: 'Invoices', path: '/' },
+              { name: 'Production', path: '/production' },
+              { name: 'Selling', path: '/selling' },
+              { name: 'Worker', path: '/worker' },
+              { name: 'Coal', path: '/coal' },
+              { name: 'Sand', path: '/sand' },
+              { name: 'Bugauses', path: '/bugauses' },
+            ].map((item) => (
+              <Link
+                key={item.name}
+                href={item.path}
+                className={`hidden md:block text-sm font-medium transition-colors ${
+                  pathname === item.path
+                    ? 'text-indigo-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {item.name}
+              </Link>
+            ))}
 
             <Link
               href="/invoices/new"

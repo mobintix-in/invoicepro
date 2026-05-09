@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Invoice, LineItem, Party, InvoiceStatus } from '@/app/lib/types'
-import { saveInvoice, nextInvoiceNumber } from '@/app/lib/storage'
-import { generateId, today, daysFromNow, formatCurrency } from '@/app/lib/utils'
+import type { Invoice, LineItem, Party, InvoiceStatus } from '@/types'
+import { saveInvoice, nextInvoiceNumber } from '@/lib/storage'
+import { generateId, today, daysFromNow, formatCurrency } from '@/lib/utils'
 
 const inputCls =
   'block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'

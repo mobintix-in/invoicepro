@@ -1,4 +1,4 @@
-import InvoiceEditWrapper from '@/app/components/InvoiceEditWrapper'
+import InvoiceEditWrapper from '@/components/InvoiceEditWrapper'
 
 export default async function EditInvoicePage({
   params,

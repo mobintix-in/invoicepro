@@ -1,5 +1,5 @@
-import { createClient } from '@/app/lib/supabase/client'
-import type { Invoice } from '@/app/lib/types'
+import { createClient } from '@/lib/supabase/client'
+import type { Invoice } from '@/types'
 
 type DbRow = {
   id: string

@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import type { Invoice, InvoiceStatus } from '@/app/lib/types'
-import { getInvoices } from '@/app/lib/storage'
-import { formatCurrency, formatDate } from '@/app/lib/utils'
-import StatusBadge from '@/app/components/StatusBadge'
+import type { Invoice, InvoiceStatus } from '@/types'
+import { getInvoices } from '@/lib/storage'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import StatusBadge from '@/components/StatusBadge'
 
 type Filter = 'all' | InvoiceStatus
 

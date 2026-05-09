@@ -1,4 +1,4 @@
-import InvoicePreview from '@/app/components/InvoicePreview'
+import InvoicePreview from '@/components/InvoicePreview'
 
 export default async function InvoiceDetailPage({
   params,

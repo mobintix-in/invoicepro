@@ -1,4 +1,4 @@
-import type { InvoiceStatus } from '@/app/lib/types'
+import type { InvoiceStatus } from '@/types'
 
 const config: Record<InvoiceStatus, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'bg-gray-100 text-gray-700 ring-gray-200' },

@@ -1,4 +1,4 @@
-import InvoiceList from '@/app/components/InvoiceList'
+import InvoiceList from '@/components/InvoiceList'
 
 export default function Home() {
   return (

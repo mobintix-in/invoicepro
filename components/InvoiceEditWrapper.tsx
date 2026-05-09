@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Invoice } from '@/app/lib/types'
-import { getInvoice } from '@/app/lib/storage'
-import InvoiceForm from '@/app/components/InvoiceForm'
+import type { Invoice } from '@/types'
+import { getInvoice } from '@/lib/storage'
+import InvoiceForm from '@/components/InvoiceForm'
 
 export default function InvoiceEditWrapper({ id }: { id: string }) {
   const router = useRouter()

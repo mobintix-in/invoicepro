@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { Invoice, InvoiceStatus, Party } from '@/app/lib/types'
-import { getInvoice, saveInvoice, deleteInvoice } from '@/app/lib/storage'
-import { formatCurrency, formatDate } from '@/app/lib/utils'
-import StatusBadge from '@/app/components/StatusBadge'
+import type { Invoice, InvoiceStatus, Party } from '@/types'
+import { getInvoice, saveInvoice, deleteInvoice } from '@/lib/storage'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import StatusBadge from '@/components/StatusBadge'
 
 export default function InvoicePreview({ id }: { id: string }) {
   const router = useRouter()
