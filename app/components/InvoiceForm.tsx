@@ -220,7 +220,7 @@ export default function InvoiceForm({ mode, initialData }: Props) {
                     Qty
                   </th>
                   <th className="w-32 pb-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Rate ($)
+                    Rate (₹)
                   </th>
                   <th className="w-32 pb-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Amount
