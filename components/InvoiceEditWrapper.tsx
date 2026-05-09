@@ -19,7 +19,7 @@ export default function InvoiceEditWrapper({ id }: { id: string }) {
       }
       setInvoice(inv)
       setLoaded(true)
-    })
+    }).catch(err => console.warn(err.message || 'Failed to load invoice'))
   }, [id, router])
 
   if (!loaded) {

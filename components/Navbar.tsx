@@ -16,7 +16,14 @@ export default function Navbar() {
 
     const supabase = createClient()
 
-    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (error) {
+        console.warn('Navbar auth error:', error.message)
+        setUser(null)
+      } else {
+        setUser(data.user)
+      }
+    }).catch(err => console.warn('Navbar catch error:', err.message || err))
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)

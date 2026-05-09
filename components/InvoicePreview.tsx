@@ -19,7 +19,7 @@ export default function InvoicePreview({ id }: { id: string }) {
         return
       }
       setInvoice(inv)
-    })
+    }).catch(err => console.warn(err.message || 'Failed to load invoice'))
   }, [id, router])
 
   if (!invoice) {
@@ -37,8 +37,18 @@ export default function InvoicePreview({ id }: { id: string }) {
       status: newStatus,
       updatedAt: new Date().toISOString(),
     }
-    await saveInvoice(updated)
-    setInvoice(updated)
+    try {
+      await saveInvoice(updated)
+      setInvoice(updated)
+    } catch (error: any) {
+      console.warn("Failed to update status:", error.message || error)
+      if (error.message === 'Not authenticated') {
+        alert("You must be logged in to update an invoice.")
+        router.push('/login')
+      } else {
+        alert(`Error updating invoice: ${error.message || "Unknown error"}`)
+      }
+    }
   }
 
   async function handleDelete() {
@@ -48,8 +58,18 @@ export default function InvoicePreview({ id }: { id: string }) {
       )
     )
       return
-    await deleteInvoice(id)
-    router.push('/')
+    try {
+      await deleteInvoice(id)
+      router.push('/')
+    } catch (error: any) {
+      console.warn("Failed to delete invoice:", error.message || error)
+      if (error.message === 'Not authenticated') {
+        alert("You must be logged in to delete an invoice.")
+        router.push('/login')
+      } else {
+        alert(`Error deleting invoice: ${error.message || "Unknown error"}`)
+      }
+    }
   }
 
   return (

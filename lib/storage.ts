@@ -41,8 +41,15 @@ function fromDb(row: DbRow): Invoice {
 }
 
 async function getUserId(): Promise<string> {
-  const { data } = await createClient().auth.getUser()
-  if (!data.user) throw new Error('Not authenticated')
+  const { data, error } = await createClient().auth.getUser()
+  if (error) {
+    console.warn('Supabase auth error:', error.message)
+    throw new Error('Not authenticated')
+  }
+  if (!data.user) {
+    console.warn('No user found in session')
+    throw new Error('Not authenticated')
+  }
   return data.user.id
 }
 
@@ -51,7 +58,10 @@ export async function getInvoices(): Promise<Invoice[]> {
     .from('invoices')
     .select('*')
     .order('created_at', { ascending: false })
-  if (error) throw error
+  if (error) {
+    console.warn('Failed to fetch invoices:', error.message || error)
+    return []
+  }
   return (data as DbRow[]).map(fromDb)
 }
 

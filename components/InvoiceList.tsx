@@ -17,6 +17,7 @@ export default function InvoiceList() {
   useEffect(() => {
     getInvoices()
       .then(setInvoices)
+      .catch(err => console.warn(err.message || 'Failed to load invoices'))
       .finally(() => setMounted(true))
   }, [])
 

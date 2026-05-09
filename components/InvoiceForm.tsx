@@ -39,7 +39,7 @@ export default function InvoiceForm({ mode, initialData }: Props) {
 
   useEffect(() => {
     if (mode === 'new') {
-      nextInvoiceNumber().then(setInvoiceNumber)
+      nextInvoiceNumber().then(setInvoiceNumber).catch(err => console.warn(err.message || 'Failed to generate number'))
     } else if (initialData) {
       setInvoiceNumber(initialData.invoiceNumber)
       setStatus(initialData.status)
@@ -106,8 +106,18 @@ export default function InvoiceForm({ mode, initialData }: Props) {
       createdAt: initialData?.createdAt ?? now,
       updatedAt: now,
     }
-    await saveInvoice(invoice)
-    router.push(`/invoices/${invoice.id}`)
+    try {
+      await saveInvoice(invoice)
+      router.push(`/invoices/${invoice.id}`)
+    } catch (error: any) {
+      console.warn("Failed to save invoice:", error.message || error)
+      if (error.message === 'Not authenticated') {
+        alert("You must be logged in to save an invoice.")
+        router.push('/login')
+      } else {
+        alert(`Error saving invoice: ${error.message || "Unknown error"}`)
+      }
+    }
   }
 
   function handleCancel() {
