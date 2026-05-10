@@ -3,10 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import type { Invoice, InvoiceStatus, Party } from '@/types'
 import { getInvoice, saveInvoice, deleteInvoice } from '@/lib/storage'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import StatusBadge from '@/components/StatusBadge'
+
+const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false })
 
 export default function InvoicePreview({ id }: { id: string }) {
   const router = useRouter()
@@ -117,8 +120,9 @@ export default function InvoicePreview({ id }: { id: string }) {
             onClick={() => window.print()}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
           >
-            Print / PDF
+            Print
           </button>
+          <InvoicePDFButton invoice={invoice} />
           <Link
             href={`/invoices/${id}/edit`}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"

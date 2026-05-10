@@ -11,7 +11,7 @@ const inputCls =
 
 const labelCls = 'mb-1 block text-xs font-medium text-gray-600'
 
-const defaultParty: Party = { name: '', email: '', address: '', phone: '' }
+const defaultParty: Party = { name: '', email: '', address: '', phone: '', gstin: '', stateName: '', stateCode: '' }
 
 interface Props {
   mode: 'new' | 'edit'
@@ -28,10 +28,22 @@ export default function InvoiceForm({ mode, initialData }: Props) {
   const [from, setFrom] = useState<Party>(defaultParty)
   const [to, setTo] = useState<Party>(defaultParty)
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: generateId(), description: '', quantity: 1, rate: 0, amount: 0 },
+    { id: generateId(), description: '', quantity: 1, rate: 0, amount: 0, hsnCode: '', unit: 'Units', gstRate: 0 },
   ])
   const [notes, setNotes] = useState('')
   const [taxRate, setTaxRate] = useState(0)
+  const [gstType, setGstType] = useState<'cgst_sgst' | 'igst'>('cgst_sgst')
+  const [sellerPan, setSellerPan] = useState('')
+  const [bankAccountName, setBankAccountName] = useState('')
+  const [bankName, setBankName] = useState('')
+  const [accountNumber, setAccountNumber] = useState('')
+  const [ifscCode, setIfscCode] = useState('')
+  const [bankBranch, setBankBranch] = useState('')
+  const [jurisdiction, setJurisdiction] = useState('')
+  const [deliveryNote, setDeliveryNote] = useState('')
+  const [buyerOrderNo, setBuyerOrderNo] = useState('')
+  const [dispatchThrough, setDispatchThrough] = useState('')
+  const [destination, setDestination] = useState('')
 
   const subtotal = lineItems.reduce((s, item) => s + item.amount, 0)
   const tax = subtotal * (taxRate / 100)
@@ -50,6 +62,18 @@ export default function InvoiceForm({ mode, initialData }: Props) {
       setLineItems(initialData.lineItems)
       setNotes(initialData.notes)
       setTaxRate(initialData.taxRate)
+      if (initialData.gstType) setGstType(initialData.gstType)
+      if (initialData.sellerPan) setSellerPan(initialData.sellerPan)
+      if (initialData.bankAccountName) setBankAccountName(initialData.bankAccountName)
+      if (initialData.bankName) setBankName(initialData.bankName)
+      if (initialData.accountNumber) setAccountNumber(initialData.accountNumber)
+      if (initialData.ifscCode) setIfscCode(initialData.ifscCode)
+      if (initialData.bankBranch) setBankBranch(initialData.bankBranch)
+      if (initialData.jurisdiction) setJurisdiction(initialData.jurisdiction)
+      if (initialData.deliveryNote) setDeliveryNote(initialData.deliveryNote)
+      if (initialData.buyerOrderNo) setBuyerOrderNo(initialData.buyerOrderNo)
+      if (initialData.dispatchThrough) setDispatchThrough(initialData.dispatchThrough)
+      if (initialData.destination) setDestination(initialData.destination)
     }
   }, [mode, initialData])
 
@@ -61,10 +85,8 @@ export default function InvoiceForm({ mode, initialData }: Props) {
     setLineItems(prev =>
       prev.map(item => {
         if (item.id !== id) return item
-        const value =
-          field === 'quantity' || field === 'rate'
-            ? parseFloat(rawValue) || 0
-            : rawValue
+        const numericFields: (keyof LineItem)[] = ['quantity', 'rate', 'gstRate']
+        const value = numericFields.includes(field) ? parseFloat(rawValue) || 0 : rawValue
         const updated = { ...item, [field]: value }
         if (field === 'quantity' || field === 'rate') {
           updated.amount = Number(updated.quantity) * Number(updated.rate)
@@ -77,7 +99,7 @@ export default function InvoiceForm({ mode, initialData }: Props) {
   function addLineItem() {
     setLineItems(prev => [
       ...prev,
-      { id: generateId(), description: '', quantity: 1, rate: 0, amount: 0 },
+      { id: generateId(), description: '', quantity: 1, rate: 0, amount: 0, hsnCode: '', unit: 'Units', gstRate: taxRate },
     ])
   }
 
@@ -105,6 +127,18 @@ export default function InvoiceForm({ mode, initialData }: Props) {
       total,
       createdAt: initialData?.createdAt ?? now,
       updatedAt: now,
+      gstType,
+      sellerPan,
+      bankAccountName,
+      bankName,
+      accountNumber,
+      ifscCode,
+      bankBranch,
+      jurisdiction,
+      deliveryNote,
+      buyerOrderNo,
+      dispatchThrough,
+      destination,
     }
     try {
       await saveInvoice(invoice)
@@ -219,20 +253,29 @@ export default function InvoiceForm({ mode, initialData }: Props) {
         {/* Line items */}
         <Section title="Line Items">
           {/* Desktop table */}
-          <div className="hidden sm:block">
-            <table className="w-full">
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full min-w-[700px]">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Description
                   </th>
+                  <th className="w-24 pb-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    HSN/SAC
+                  </th>
+                  <th className="w-16 pb-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    GST%
+                  </th>
+                  <th className="w-16 pb-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Unit
+                  </th>
                   <th className="w-20 pb-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Qty
                   </th>
-                  <th className="w-32 pb-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="w-28 pb-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Rate (₹)
                   </th>
-                  <th className="w-32 pb-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <th className="w-28 pb-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Amount
                   </th>
                   <th className="w-8 pb-3" />
@@ -249,6 +292,35 @@ export default function InvoiceForm({ mode, initialData }: Props) {
                           updateLineItem(item.id, 'description', e.target.value)
                         }
                         placeholder="Item description"
+                        className={inputCls}
+                      />
+                    </td>
+                    <td className="py-3 pr-3">
+                      <input
+                        type="text"
+                        value={item.hsnCode || ''}
+                        onChange={e => updateLineItem(item.id, 'hsnCode', e.target.value)}
+                        placeholder="6901"
+                        className={inputCls}
+                      />
+                    </td>
+                    <td className="py-3 pr-3">
+                      <input
+                        type="number"
+                        value={item.gstRate ?? ''}
+                        onChange={e => updateLineItem(item.id, 'gstRate', e.target.value)}
+                        min="0"
+                        max="100"
+                        placeholder="12"
+                        className={`${inputCls} text-right`}
+                      />
+                    </td>
+                    <td className="py-3 pr-3">
+                      <input
+                        type="text"
+                        value={item.unit || ''}
+                        onChange={e => updateLineItem(item.id, 'unit', e.target.value)}
+                        placeholder="Units"
                         className={inputCls}
                       />
                     </td>
@@ -453,6 +525,135 @@ export default function InvoiceForm({ mode, initialData }: Props) {
           </Section>
         </div>
 
+        {/* GST Details */}
+        <Section title="GST / Tax Details">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <label className={labelCls}>GST Type</label>
+              <select
+                value={gstType}
+                onChange={e => setGstType(e.target.value as 'cgst_sgst' | 'igst')}
+                className={inputCls}
+              >
+                <option value="cgst_sgst">CGST + SGST (Intra-state)</option>
+                <option value="igst">IGST (Inter-state)</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Seller PAN</label>
+              <input
+                type="text"
+                value={sellerPan}
+                onChange={e => setSellerPan(e.target.value.toUpperCase())}
+                placeholder="ABCDE1234F"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Jurisdiction City</label>
+              <input
+                type="text"
+                value={jurisdiction}
+                onChange={e => setJurisdiction(e.target.value)}
+                placeholder="Surat"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Delivery Note</label>
+              <input
+                type="text"
+                value={deliveryNote}
+                onChange={e => setDeliveryNote(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Buyer&apos;s Order No.</label>
+              <input
+                type="text"
+                value={buyerOrderNo}
+                onChange={e => setBuyerOrderNo(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Dispatched Through</label>
+              <input
+                type="text"
+                value={dispatchThrough}
+                onChange={e => setDispatchThrough(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Destination</label>
+              <input
+                type="text"
+                value={destination}
+                onChange={e => setDestination(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+          </div>
+        </Section>
+
+        {/* Bank Details */}
+        <Section title="Bank Details">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className={labelCls}>A/c Holder Name</label>
+              <input
+                type="text"
+                value={bankAccountName}
+                onChange={e => setBankAccountName(e.target.value)}
+                placeholder="CHAMUNDA BRICKS"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Bank Name</label>
+              <input
+                type="text"
+                value={bankName}
+                onChange={e => setBankName(e.target.value)}
+                placeholder="BANK OF BARODA"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Account Number</label>
+              <input
+                type="text"
+                value={accountNumber}
+                onChange={e => setAccountNumber(e.target.value)}
+                placeholder="44850200000036"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>IFSC Code</label>
+              <input
+                type="text"
+                value={ifscCode}
+                onChange={e => setIfscCode(e.target.value.toUpperCase())}
+                placeholder="BARB0MAHSUR"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Branch</label>
+              <input
+                type="text"
+                value={bankBranch}
+                onChange={e => setBankBranch(e.target.value)}
+                placeholder="MAHUVA"
+                className={inputCls}
+              />
+            </div>
+          </div>
+        </Section>
+
         {/* Bottom action bar */}
         <div className="flex justify-end gap-3 pb-8">
           <button
@@ -549,6 +750,38 @@ function PartySection({
             placeholder="+1 (555) 000-0000"
             className={inputCls}
           />
+        </div>
+        <div>
+          <label className={labelCls}>GSTIN / UIN</label>
+          <input
+            type="text"
+            value={party.gstin || ''}
+            onChange={e => set('gstin', e.target.value.toUpperCase())}
+            placeholder="24AVJPP1377R1ZT"
+            className={inputCls}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>State Name</label>
+            <input
+              type="text"
+              value={party.stateName || ''}
+              onChange={e => set('stateName', e.target.value)}
+              placeholder="Gujarat"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>State Code</label>
+            <input
+              type="text"
+              value={party.stateCode || ''}
+              onChange={e => set('stateCode', e.target.value)}
+              placeholder="24"
+              className={inputCls}
+            />
+          </div>
         </div>
       </div>
     </Section>
