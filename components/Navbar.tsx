@@ -44,8 +44,8 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
               <svg
@@ -65,7 +65,7 @@ export default function Navbar() {
             <span className="text-base font-semibold text-gray-900">InvoicePro</span>
           </Link>
 
-          <div className="flex items-center gap-4">
+          <nav className="hidden md:flex flex-1 items-center justify-center gap-4 overflow-x-auto px-4 no-scrollbar">
             {[
               { name: 'Invoices', path: '/' },
               { name: 'Production', path: '/production' },
@@ -78,7 +78,7 @@ export default function Navbar() {
               <Link
                 key={item.name}
                 href={item.path}
-                className={`hidden md:block text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap text-sm font-medium transition-colors ${
                   pathname === item.path
                     ? 'text-indigo-600'
                     : 'text-gray-600 hover:text-gray-900'
@@ -87,6 +87,9 @@ export default function Navbar() {
                 {item.name}
               </Link>
             ))}
+          </nav>
+
+          <div className="flex shrink-0 items-center gap-3">
 
             <Link
               href="/invoices/new"

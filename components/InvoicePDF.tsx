@@ -34,7 +34,7 @@ function numFmt(n: number) {
 }
 
 function dateFmt(d: string) {
-  if (!d) return ''
+  if (!d) return ' '
   const dt = new Date(d + 'T12:00:00')
   return `${dt.getDate()}-${dt.toLocaleString('en-IN', { month: 'short' })}-${String(dt.getFullYear()).slice(2)}`
 }
@@ -71,7 +71,7 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
             {invoice.from.phone ? <Text>Ph: {invoice.from.phone}</Text> : null}
             {invoice.from.gstin ? <Text style={s.mt2}>GSTIN/UIN: {invoice.from.gstin}</Text> : null}
             {invoice.from.stateName ? (
-              <Text>State Name : {invoice.from.stateName}{invoice.from.stateCode ? `, Code : ${invoice.from.stateCode}` : ''}</Text>
+              <Text>State Name : {invoice.from.stateName}{invoice.from.stateCode ? `, Code : ${invoice.from.stateCode}` : ' '}</Text>
             ) : null}
           </View>
           {/* Right: invoice meta grid */}
@@ -79,7 +79,7 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
             <View style={s.row}>
               <View style={[s.b, s.p2, { flex: 1 }]}>
                 <Text style={s.bold}>Invoice No.</Text>
-                <Text style={[s.bold, { fontSize: 9, marginTop: 1 }]}>{invoice.invoiceNumber}</Text>
+                <Text style={[s.bold, { fontSize: 9, marginTop: 1 }]}>{invoice.invoiceNumber || ' '}</Text>
               </View>
               <View style={[s.b, s.p2, { flex: 1 }]}>
                 <Text style={s.bold}>Dated</Text>
@@ -89,7 +89,7 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
             <View style={s.row}>
               <View style={[s.b, s.p2, { flex: 1 }]}>
                 <Text style={s.bold}>Delivery Note</Text>
-                <Text style={s.mt2}>{invoice.deliveryNote || ''}</Text>
+                <Text style={s.mt2}>{invoice.deliveryNote || ' '}</Text>
               </View>
               <View style={[s.b, s.p2, { flex: 1 }]}>
                 <Text style={s.bold}>Mode/Terms of Payment</Text>
@@ -106,7 +106,7 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
             <View style={s.row}>
               <View style={[s.b, s.p2, { flex: 1 }]}>
                 <Text style={s.bold}>Buyer&apos;s Order No.</Text>
-                <Text style={s.mt2}>{invoice.buyerOrderNo || ''}</Text>
+                <Text style={s.mt2}>{invoice.buyerOrderNo || ' '}</Text>
               </View>
               <View style={[s.b, s.p2, { flex: 1 }]}>
                 <Text style={s.bold}>Dated</Text>
@@ -123,7 +123,7 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
             {invoice.to.address ? <Text style={s.mt2}>{invoice.to.address}</Text> : null}
             {invoice.to.gstin ? <Text style={s.mt2}>GSTIN/UIN: {invoice.to.gstin}</Text> : null}
             {invoice.to.stateName ? (
-              <Text>STATE NAME ; {invoice.to.stateName.toUpperCase()}{invoice.to.stateCode ? ` CODE :${invoice.to.stateCode}` : ''}</Text>
+              <Text>STATE NAME ; {invoice.to.stateName.toUpperCase()}{invoice.to.stateCode ? ` CODE :${invoice.to.stateCode}` : ' '}</Text>
             ) : null}
           </View>
           <View style={{ flex: 4 }}>
@@ -138,11 +138,11 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
             <View style={s.row}>
               <View style={[s.b, s.p2, { flex: 1 }]}>
                 <Text style={s.bold}>Dispatched through</Text>
-                <Text style={s.mt2}>{invoice.dispatchThrough || ''}</Text>
+                <Text style={s.mt2}>{invoice.dispatchThrough || ' '}</Text>
               </View>
               <View style={[s.b, s.p2, { flex: 1 }]}>
                 <Text style={s.bold}>Destination</Text>
-                <Text style={s.mt2}>{invoice.destination || ''}</Text>
+                <Text style={s.mt2}>{invoice.destination || ' '}</Text>
               </View>
             </View>
             <View style={[s.b, s.p2]}>
@@ -168,10 +168,10 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
         {invoice.lineItems.map((item, i) => (
           <View key={item.id} style={[s.row, s.bl, s.br, s.bb]}>
             <Text style={[s.center, s.p2, s.br, { width: 22 }]}>{i + 1}</Text>
-            <Text style={[s.p2, s.br, { flex: 1 }]}>{item.description}</Text>
-            <Text style={[s.center, s.p2, s.br, { width: 42 }]}>{item.hsnCode || ''}</Text>
+            <Text style={[s.p2, s.br, { flex: 1 }]}>{item.description || ' '}</Text>
+            <Text style={[s.center, s.p2, s.br, { width: 42 }]}>{item.hsnCode || ' '}</Text>
             <Text style={[s.center, s.p2, s.br, { width: 28 }]}>
-              {(item.gstRate ?? invoice.taxRate ?? 0) > 0 ? `${item.gstRate ?? invoice.taxRate}%` : ''}
+              {(item.gstRate ?? invoice.taxRate ?? 0) > 0 ? `${item.gstRate ?? invoice.taxRate}%` : ' '}
             </Text>
             <Text style={[s.right, s.p2, s.br, { width: 52 }]}>
               {numFmt(item.quantity)}{'\n'}{item.unit || unitLabel}
@@ -184,7 +184,7 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
 
         {/* CGST / SGST / IGST rows */}
         {gstType === 'cgst_sgst' && (
-          <>
+          <View>
             <View style={[s.row, s.bl, s.br, s.bb]}>
               <View style={{ flex: 1 }} />
               <Text style={[s.bold, s.right, s.p2, { width: 80 }]}>CENTRAL GST</Text>
@@ -195,7 +195,7 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
               <Text style={[s.bold, s.right, s.p2, { width: 80 }]}>STATE GST</Text>
               <Text style={[s.bold, s.right, s.p2, { width: 55 }]}>{numFmt(sgst)}</Text>
             </View>
-          </>
+          </View>
         )}
         {gstType === 'igst' && (
           <View style={[s.row, s.bl, s.br, s.bb]}>
@@ -208,12 +208,12 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
         {/* Total row */}
         <View style={[s.row, s.b]}>
           <Text style={[s.bold, s.right, s.p2, s.br, { flex: 1 }]}>Total</Text>
-          <Text style={[s.bold, s.right, s.p2, s.br, { width: 28 }]}></Text>
+          <Text style={[s.bold, s.right, s.p2, s.br, { width: 28 }]}>{' '}</Text>
           <Text style={[s.bold, s.right, s.p2, s.br, { width: 52 }]}>
             {numFmt(totalQty)}{'\n'}{unitLabel}
           </Text>
-          <Text style={[s.bold, s.right, s.p2, s.br, { width: 42 }]}></Text>
-          <Text style={[s.bold, s.right, s.p2, s.br, { width: 28 }]}></Text>
+          <Text style={[s.bold, s.right, s.p2, s.br, { width: 42 }]}>{' '}</Text>
+          <Text style={[s.bold, s.right, s.p2, s.br, { width: 28 }]}>{' '}</Text>
           <Text style={[s.bold, s.right, s.p2, { width: 55 }]}>{numFmt(invoice.total)}</Text>
         </View>
 
@@ -230,12 +230,10 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
         <View style={[s.row, s.b]}>
           <Text style={[s.bold, s.center, s.p2, s.br, { width: 50 }]}>HSN/SAC</Text>
           <Text style={[s.bold, s.center, s.p2, s.br, { flex: 1 }]}>Taxable{'\n'}Value</Text>
-          {gstType === 'cgst_sgst' ? (
-            <>
-              <Text style={[s.bold, s.center, s.p2, s.br, { width: 80 }]}>Central Tax{'\n'}Rate     Amount</Text>
-              <Text style={[s.bold, s.center, s.p2, s.br, { width: 80 }]}>State Tax{'\n'}Rate     Amount</Text>
-            </>
-          ) : (
+          {gstType === 'cgst_sgst' ? [
+            <Text key="cgst" style={[s.bold, s.center, s.p2, s.br, { width: 80 }]}>Central Tax{'\n'}Rate     Amount</Text>,
+            <Text key="sgst" style={[s.bold, s.center, s.p2, s.br, { width: 80 }]}>State Tax{'\n'}Rate     Amount</Text>
+          ] : (
             <Text style={[s.bold, s.center, s.p2, s.br, { width: 80 }]}>Integrated Tax{'\n'}Rate     Amount</Text>
           )}
           <Text style={[s.bold, s.center, s.p2, { width: 60 }]}>Total Tax{'\n'}Amount</Text>
@@ -248,12 +246,10 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
             <View key={code} style={[s.row, s.bl, s.br, s.bb]}>
               <Text style={[s.center, s.p2, s.br, { width: 50 }]}>{code}</Text>
               <Text style={[s.right, s.p2, s.br, { flex: 1 }]}>{numFmt(taxable)}</Text>
-              {gstType === 'cgst_sgst' ? (
-                <>
-                  <Text style={[s.center, s.p2, s.br, { width: 80 }]}>{rate / 2}%     {numFmt(half)}</Text>
-                  <Text style={[s.center, s.p2, s.br, { width: 80 }]}>{rate / 2}%     {numFmt(half)}</Text>
-                </>
-              ) : (
+              {gstType === 'cgst_sgst' ? [
+                <Text key="cgst" style={[s.center, s.p2, s.br, { width: 80 }]}>{rate / 2}%     {numFmt(half)}</Text>,
+                <Text key="sgst" style={[s.center, s.p2, s.br, { width: 80 }]}>{rate / 2}%     {numFmt(half)}</Text>
+              ] : (
                 <Text style={[s.center, s.p2, s.br, { width: 80 }]}>{rate}%     {numFmt(itemTax)}</Text>
               )}
               <Text style={[s.right, s.p2, { width: 60 }]}>{numFmt(itemTax)}</Text>
@@ -265,12 +261,10 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
         <View style={[s.row, s.b]}>
           <Text style={[s.bold, s.right, s.p2, s.br, { width: 50 }]}>Total</Text>
           <Text style={[s.bold, s.right, s.p2, s.br, { flex: 1 }]}>{numFmt(invoice.subtotal)}</Text>
-          {gstType === 'cgst_sgst' ? (
-            <>
-              <Text style={[s.bold, s.right, s.p2, s.br, { width: 80 }]}>{numFmt(cgst)}</Text>
-              <Text style={[s.bold, s.right, s.p2, s.br, { width: 80 }]}>{numFmt(sgst)}</Text>
-            </>
-          ) : (
+          {gstType === 'cgst_sgst' ? [
+            <Text key="cgst" style={[s.bold, s.right, s.p2, s.br, { width: 80 }]}>{numFmt(cgst)}</Text>,
+            <Text key="sgst" style={[s.bold, s.right, s.p2, s.br, { width: 80 }]}>{numFmt(sgst)}</Text>
+          ] : (
             <Text style={[s.bold, s.right, s.p2, s.br, { width: 80 }]}>{numFmt(igst)}</Text>
           )}
           <Text style={[s.bold, s.right, s.p2, { width: 60 }]}>{numFmt(invoice.tax)}</Text>
@@ -300,15 +294,15 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
           </View>
           <View style={[s.p3, { flex: 1 }]}>
             {(invoice.bankName || invoice.bankAccountName || invoice.accountNumber) ? (
-              <>
+              <View>
                 <Text style={s.bold}>Company&apos;s Bank Details</Text>
                 {invoice.bankAccountName ? <Text style={s.mt2}>A/c Holder&apos;s Name: <Text style={s.bold}>{invoice.bankAccountName}</Text></Text> : null}
                 {invoice.bankName ? <Text style={s.mt2}>Bank Name : <Text style={s.bold}>{invoice.bankName}</Text></Text> : null}
                 {invoice.accountNumber ? <Text style={s.mt2}>A/c No. : <Text style={s.bold}>{invoice.accountNumber}</Text></Text> : null}
                 {(invoice.bankBranch || invoice.ifscCode) ? (
-                  <Text style={s.mt2}>Branch &amp; IFS Code: <Text style={s.bold}>{invoice.bankBranch || ''}{invoice.bankBranch && invoice.ifscCode ? ' & ' : ''}{invoice.ifscCode || ''}</Text></Text>
+                  <Text style={s.mt2}>Branch &amp; IFS Code: <Text style={s.bold}>{invoice.bankBranch || ' '}{invoice.bankBranch && invoice.ifscCode ? ' & ' : ' '}{invoice.ifscCode || ' '}</Text></Text>
                 ) : null}
-              </>
+              </View>
             ) : null}
           </View>
         </View>
@@ -319,7 +313,7 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
             <Text style={{ fontSize: 7 }}>Customer&apos;s Seal and Signature</Text>
           </View>
           <View style={[s.p3, { flex: 1, alignItems: 'flex-end' }]}>
-            <Text style={s.bold}>For {invoice.from.name}</Text>
+            <Text style={s.bold}>For {invoice.from.name || ' '}</Text>
             <Text style={{ marginTop: 20, fontSize: 7 }}>Authorised Signatory</Text>
           </View>
         </View>
@@ -327,7 +321,7 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
         {/* ── Footer ── */}
         <View style={[s.b, s.p2, { marginTop: 4 }]}>
           <Text style={[s.bold, s.center, { fontSize: 8 }]}>
-            Tax Invoice{invoice.jurisdiction ? ` SUBJECT TO ${invoice.jurisdiction.toUpperCase()} JURISDICTION` : ''}
+            Tax Invoice{invoice.jurisdiction ? ` SUBJECT TO ${invoice.jurisdiction.toUpperCase()} JURISDICTION` : ' '}
           </Text>
         </View>
 
