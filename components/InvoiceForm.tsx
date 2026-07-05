@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Invoice, LineItem, Party, InvoiceStatus } from '@/types'
 import { saveInvoice, nextInvoiceNumber } from '@/lib/storage'
+import { getMyProfile } from '@/lib/account'
 import { generateId, today, daysFromNow, formatCurrency } from '@/lib/utils'
 
 const inputCls =
@@ -21,61 +22,69 @@ interface Props {
 export default function InvoiceForm({ mode, initialData }: Props) {
   const router = useRouter()
 
-  const [invoiceNumber, setInvoiceNumber] = useState('')
-  const [status, setStatus] = useState<InvoiceStatus>('draft')
-  const [issueDate, setIssueDate] = useState(today())
-  const [dueDate, setDueDate] = useState(daysFromNow(30))
-  const [from, setFrom] = useState<Party>(defaultParty)
-  const [to, setTo] = useState<Party>(defaultParty)
-  const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: generateId(), description: '', quantity: 1, rate: 0, amount: 0, hsnCode: '', unit: 'Units', gstRate: 0 },
-  ])
-  const [notes, setNotes] = useState('')
-  const [taxRate, setTaxRate] = useState(0)
-  const [gstType, setGstType] = useState<'cgst_sgst' | 'igst'>('cgst_sgst')
-  const [sellerPan, setSellerPan] = useState('')
-  const [bankAccountName, setBankAccountName] = useState('')
-  const [bankName, setBankName] = useState('')
-  const [accountNumber, setAccountNumber] = useState('')
-  const [ifscCode, setIfscCode] = useState('')
-  const [bankBranch, setBankBranch] = useState('')
-  const [jurisdiction, setJurisdiction] = useState('')
-  const [deliveryNote, setDeliveryNote] = useState('')
-  const [buyerOrderNo, setBuyerOrderNo] = useState('')
-  const [dispatchThrough, setDispatchThrough] = useState('')
-  const [destination, setDestination] = useState('')
+  // Edit mode mounts with initialData already loaded, so initialize from it
+  // directly (lazily). New mode starts blank and is pre-filled from the profile
+  // in the effect below.
+  const [invoiceNumber, setInvoiceNumber] = useState(() => initialData?.invoiceNumber ?? '')
+  const [status, setStatus] = useState<InvoiceStatus>(() => initialData?.status ?? 'draft')
+  const [issueDate, setIssueDate] = useState(() => initialData?.issueDate ?? today())
+  const [dueDate, setDueDate] = useState(() => initialData?.dueDate ?? daysFromNow(30))
+  const [from, setFrom] = useState<Party>(() => initialData?.from ?? defaultParty)
+  const [to, setTo] = useState<Party>(() => initialData?.to ?? defaultParty)
+  const [lineItems, setLineItems] = useState<LineItem[]>(() =>
+    initialData?.lineItems ?? [
+      { id: generateId(), description: '', quantity: 1, rate: 0, amount: 0, hsnCode: '', unit: 'Units', gstRate: 0 },
+    ],
+  )
+  const [notes, setNotes] = useState(() => initialData?.notes ?? '')
+  const [taxRate, setTaxRate] = useState(() => initialData?.taxRate ?? 0)
+  const [gstType, setGstType] = useState<'cgst_sgst' | 'igst'>(() => initialData?.gstType ?? 'cgst_sgst')
+  const [sellerPan, setSellerPan] = useState(() => initialData?.sellerPan ?? '')
+  const [bankAccountName, setBankAccountName] = useState(() => initialData?.bankAccountName ?? '')
+  const [bankName, setBankName] = useState(() => initialData?.bankName ?? '')
+  const [accountNumber, setAccountNumber] = useState(() => initialData?.accountNumber ?? '')
+  const [ifscCode, setIfscCode] = useState(() => initialData?.ifscCode ?? '')
+  const [bankBranch, setBankBranch] = useState(() => initialData?.bankBranch ?? '')
+  const [jurisdiction, setJurisdiction] = useState(() => initialData?.jurisdiction ?? '')
+  const [deliveryNote, setDeliveryNote] = useState(() => initialData?.deliveryNote ?? '')
+  const [buyerOrderNo, setBuyerOrderNo] = useState(() => initialData?.buyerOrderNo ?? '')
+  const [dispatchThrough, setDispatchThrough] = useState(() => initialData?.dispatchThrough ?? '')
+  const [destination, setDestination] = useState(() => initialData?.destination ?? '')
 
   const subtotal = lineItems.reduce((s, item) => s + item.amount, 0)
   const tax = subtotal * (taxRate / 100)
   const total = subtotal + tax
 
   useEffect(() => {
-    if (mode === 'new') {
-      nextInvoiceNumber().then(setInvoiceNumber).catch(err => console.warn(err.message || 'Failed to generate number'))
-    } else if (initialData) {
-      setInvoiceNumber(initialData.invoiceNumber)
-      setStatus(initialData.status)
-      setIssueDate(initialData.issueDate)
-      setDueDate(initialData.dueDate)
-      setFrom(initialData.from)
-      setTo(initialData.to)
-      setLineItems(initialData.lineItems)
-      setNotes(initialData.notes)
-      setTaxRate(initialData.taxRate)
-      if (initialData.gstType) setGstType(initialData.gstType)
-      if (initialData.sellerPan) setSellerPan(initialData.sellerPan)
-      if (initialData.bankAccountName) setBankAccountName(initialData.bankAccountName)
-      if (initialData.bankName) setBankName(initialData.bankName)
-      if (initialData.accountNumber) setAccountNumber(initialData.accountNumber)
-      if (initialData.ifscCode) setIfscCode(initialData.ifscCode)
-      if (initialData.bankBranch) setBankBranch(initialData.bankBranch)
-      if (initialData.jurisdiction) setJurisdiction(initialData.jurisdiction)
-      if (initialData.deliveryNote) setDeliveryNote(initialData.deliveryNote)
-      if (initialData.buyerOrderNo) setBuyerOrderNo(initialData.buyerOrderNo)
-      if (initialData.dispatchThrough) setDispatchThrough(initialData.dispatchThrough)
-      if (initialData.destination) setDestination(initialData.destination)
-    }
-  }, [mode, initialData])
+    if (mode !== 'new') return
+
+    nextInvoiceNumber()
+      .then(setInvoiceNumber)
+      .catch((err) => console.warn(err.message || 'Failed to generate number'))
+
+    // Pre-fill the seller ("From") side and bank block from the saved profile.
+    getMyProfile()
+      .then((p) => {
+        if (!p) return
+        setFrom({
+          name: p.companyName || p.fullName,
+          email: p.email,
+          address: p.address,
+          phone: p.phone,
+          gstin: p.gstin,
+          stateName: p.stateName,
+          stateCode: p.stateCode,
+        })
+        setSellerPan(p.pan)
+        setBankAccountName(p.bankAccountName)
+        setBankName(p.bankName)
+        setAccountNumber(p.accountNumber)
+        setIfscCode(p.ifscCode)
+        setBankBranch(p.bankBranch)
+        setJurisdiction(p.jurisdiction)
+      })
+      .catch(() => {})
+  }, [mode])
 
   function updateLineItem(
     id: string,
@@ -143,13 +152,14 @@ export default function InvoiceForm({ mode, initialData }: Props) {
     try {
       await saveInvoice(invoice)
       router.push(`/invoices/${invoice.id}`)
-    } catch (error: any) {
-      console.warn("Failed to save invoice:", error.message || error)
-      if (error.message === 'Not authenticated') {
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      console.warn("Failed to save invoice:", msg)
+      if (msg === 'Not authenticated') {
         alert("You must be logged in to save an invoice.")
         router.push('/login')
       } else {
-        alert(`Error saving invoice: ${error.message || "Unknown error"}`)
+        alert(`Error saving invoice: ${msg || "Unknown error"}`)
       }
     }
   }

@@ -3,12 +3,29 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { isSupabaseConfigured } from '@/lib/supabase/client'
-import { getMyProfile, updateMyProfile, getMySubscription } from '@/lib/account'
+import { getMyProfile, updateMyProfile, getMySubscription, type ProfileInput } from '@/lib/account'
 import { isSubscriptionActive, type Subscription, type SubscriptionStatus } from '@/lib/subscription'
 
 const inputCls =
   'mt-1.5 block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'
 const labelCls = 'block text-sm font-medium text-gray-700'
+
+const EMPTY: ProfileInput = {
+  fullName: '',
+  phone: '',
+  companyName: '',
+  address: '',
+  gstin: '',
+  stateName: '',
+  stateCode: '',
+  pan: '',
+  bankAccountName: '',
+  bankName: '',
+  accountNumber: '',
+  ifscCode: '',
+  bankBranch: '',
+  jurisdiction: '',
+}
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
@@ -30,11 +47,19 @@ const STATUS_LABELS: Record<SubscriptionStatus | 'none', string> = {
   none: 'No subscription',
 }
 
+function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">{title}</h2>
+      {hint && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
+      <div className="mt-4">{children}</div>
+    </div>
+  )
+}
+
 export default function ProfilePage() {
   const [loading, setLoading] = useState(isSupabaseConfigured())
-  const [fullName, setFullName] = useState('')
-  const [companyName, setCompanyName] = useState('')
-  const [phone, setPhone] = useState('')
+  const [form, setForm] = useState<ProfileInput>(EMPTY)
   const [email, setEmail] = useState('')
   const [createdAt, setCreatedAt] = useState<string | null>(null)
   const [sub, setSub] = useState<Subscription | null>(null)
@@ -42,13 +67,30 @@ export default function ProfilePage() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  function set<K extends keyof ProfileInput>(key: K, value: ProfileInput[K]) {
+    setForm((f) => ({ ...f, [key]: value }))
+  }
+
   useEffect(() => {
     if (!isSupabaseConfigured()) return
     Promise.all([getMyProfile(), getMySubscription()]).then(([p, s]) => {
       if (p) {
-        setFullName(p.fullName)
-        setCompanyName(p.companyName)
-        setPhone(p.phone)
+        setForm({
+          fullName: p.fullName,
+          phone: p.phone,
+          companyName: p.companyName,
+          address: p.address,
+          gstin: p.gstin,
+          stateName: p.stateName,
+          stateCode: p.stateCode,
+          pan: p.pan,
+          bankAccountName: p.bankAccountName,
+          bankName: p.bankName,
+          accountNumber: p.accountNumber,
+          ifscCode: p.ifscCode,
+          bankBranch: p.bankBranch,
+          jurisdiction: p.jurisdiction,
+        })
         setEmail(p.email)
         setCreatedAt(p.createdAt)
       }
@@ -63,8 +105,8 @@ export default function ProfilePage() {
     setMessage(null)
     setSaving(true)
     try {
-      await updateMyProfile({ fullName, phone, companyName })
-      setMessage('Profile saved.')
+      await updateMyProfile(form)
+      setMessage('Profile saved. New invoices will use these details.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save your profile.')
     } finally {
@@ -84,45 +126,103 @@ export default function ProfilePage() {
   const active = isSubscriptionActive(sub)
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
-        <p className="mt-1 text-sm text-gray-500">Manage your account details.</p>
+        <p className="mt-1 text-sm text-gray-500">
+          Your business details here auto-fill the “From” side of every new invoice.
+        </p>
       </div>
 
-      {/* Account details */}
-      <form onSubmit={handleSave} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-gray-400">Account details</h2>
+      <form onSubmit={handleSave} className="space-y-6">
+        {/* Account */}
+        <Section title="Account">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="fullName" className={labelCls}>Full Name</label>
+              <input id="fullName" type="text" value={form.fullName} onChange={(e) => set('fullName', e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label htmlFor="phone" className={labelCls}>Phone Number</label>
+              <input id="phone" type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} className={inputCls} />
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="email" className={labelCls}>Email</label>
+              <input id="email" type="email" value={email} disabled className={`${inputCls} cursor-not-allowed bg-gray-50 text-gray-500`} />
+              <p className="mt-1 text-xs text-gray-400">Email is tied to your login and can&apos;t be changed here.</p>
+            </div>
+          </div>
+        </Section>
 
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="fullName" className={labelCls}>Full Name</label>
-            <input id="fullName" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputCls} />
+        {/* Business details */}
+        <Section title="Business details" hint="Shown as the seller (“From”) on your invoices.">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label htmlFor="companyName" className={labelCls}>Company / Business Name</label>
+              <input id="companyName" type="text" value={form.companyName} onChange={(e) => set('companyName', e.target.value)} placeholder="Chamunda Bricks" className={inputCls} />
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="address" className={labelCls}>Address</label>
+              <textarea id="address" rows={2} value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="123 Main St, City, State" className={`${inputCls} resize-none`} />
+            </div>
+            <div>
+              <label htmlFor="gstin" className={labelCls}>GSTIN / UIN</label>
+              <input id="gstin" type="text" value={form.gstin} onChange={(e) => set('gstin', e.target.value.toUpperCase())} placeholder="24AVJPP1377R1ZT" className={inputCls} />
+            </div>
+            <div>
+              <label htmlFor="pan" className={labelCls}>PAN</label>
+              <input id="pan" type="text" value={form.pan} onChange={(e) => set('pan', e.target.value.toUpperCase())} placeholder="ABCDE1234F" className={inputCls} />
+            </div>
+            <div>
+              <label htmlFor="stateName" className={labelCls}>State Name</label>
+              <input id="stateName" type="text" value={form.stateName} onChange={(e) => set('stateName', e.target.value)} placeholder="Gujarat" className={inputCls} />
+            </div>
+            <div>
+              <label htmlFor="stateCode" className={labelCls}>State Code</label>
+              <input id="stateCode" type="text" value={form.stateCode} onChange={(e) => set('stateCode', e.target.value)} placeholder="24" className={inputCls} />
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="jurisdiction" className={labelCls}>Jurisdiction City</label>
+              <input id="jurisdiction" type="text" value={form.jurisdiction} onChange={(e) => set('jurisdiction', e.target.value)} placeholder="Surat" className={inputCls} />
+            </div>
           </div>
-          <div>
-            <label htmlFor="companyName" className={labelCls}>Company Name</label>
-            <input id="companyName" type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label htmlFor="phone" className={labelCls}>Phone Number</label>
-            <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label htmlFor="email" className={labelCls}>Email</label>
-            <input id="email" type="email" value={email} disabled className={`${inputCls} cursor-not-allowed bg-gray-50 text-gray-500`} />
-            <p className="mt-1 text-xs text-gray-400">Email is tied to your login and can&apos;t be changed here.</p>
-          </div>
-        </div>
+        </Section>
 
-        {error && <p className="mt-4 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-600">{error}</p>}
-        {message && <p className="mt-4 rounded-lg bg-green-50 px-3.5 py-2.5 text-sm text-green-700">{message}</p>}
+        {/* Bank details */}
+        <Section title="Bank details" hint="Appears on invoices for payment.">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="bankAccountName" className={labelCls}>A/c Holder Name</label>
+              <input id="bankAccountName" type="text" value={form.bankAccountName} onChange={(e) => set('bankAccountName', e.target.value)} placeholder="CHAMUNDA BRICKS" className={inputCls} />
+            </div>
+            <div>
+              <label htmlFor="bankName" className={labelCls}>Bank Name</label>
+              <input id="bankName" type="text" value={form.bankName} onChange={(e) => set('bankName', e.target.value)} placeholder="BANK OF BARODA" className={inputCls} />
+            </div>
+            <div>
+              <label htmlFor="accountNumber" className={labelCls}>Account Number</label>
+              <input id="accountNumber" type="text" value={form.accountNumber} onChange={(e) => set('accountNumber', e.target.value)} placeholder="44850200000036" className={inputCls} />
+            </div>
+            <div>
+              <label htmlFor="ifscCode" className={labelCls}>IFSC Code</label>
+              <input id="ifscCode" type="text" value={form.ifscCode} onChange={(e) => set('ifscCode', e.target.value.toUpperCase())} placeholder="BARB0MAHSUR" className={inputCls} />
+            </div>
+            <div>
+              <label htmlFor="bankBranch" className={labelCls}>Branch</label>
+              <input id="bankBranch" type="text" value={form.bankBranch} onChange={(e) => set('bankBranch', e.target.value)} placeholder="MAHUVA" className={inputCls} />
+            </div>
+          </div>
+        </Section>
 
-        <div className="mt-5 flex items-center justify-between">
+        {error && <p className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-600">{error}</p>}
+        {message && <p className="rounded-lg bg-green-50 px-3.5 py-2.5 text-sm text-green-700">{message}</p>}
+
+        <div className="flex items-center justify-between">
           <span className="text-xs text-gray-400">Member since {formatDate(createdAt)}</span>
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+            className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
           >
             {saving ? 'Saving…' : 'Save changes'}
           </button>

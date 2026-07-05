@@ -50,11 +50,26 @@ export async function getMySubscription(): Promise<Subscription | null> {
 
 // ── Profile ──────────────────────────────────────────────────────────────────
 
-export interface Profile {
-  id: string
+/** Editable business fields — these pre-fill the "From" side of a new invoice. */
+export interface ProfileInput {
   fullName: string
   phone: string
   companyName: string
+  address: string
+  gstin: string
+  stateName: string
+  stateCode: string
+  pan: string
+  bankAccountName: string
+  bankName: string
+  accountNumber: string
+  ifscCode: string
+  bankBranch: string
+  jurisdiction: string
+}
+
+export interface Profile extends ProfileInput {
+  id: string
   email: string
   createdAt: string | null
 }
@@ -66,7 +81,21 @@ type ProfileRow = {
   company_name: string
   email: string
   created_at: string | null
+  address: string
+  gstin: string
+  state_name: string
+  state_code: string
+  pan: string
+  bank_account_name: string
+  bank_name: string
+  account_number: string
+  ifsc_code: string
+  bank_branch: string
+  jurisdiction: string
 }
+
+const PROFILE_COLUMNS =
+  'id, full_name, phone, company_name, email, created_at, address, gstin, state_name, state_code, pan, bank_account_name, bank_name, account_number, ifsc_code, bank_branch, jurisdiction'
 
 export async function getMyProfile(): Promise<Profile | null> {
   const { data: userData } = await createClient().auth.getUser()
@@ -74,7 +103,7 @@ export async function getMyProfile(): Promise<Profile | null> {
   if (!uid) return null
   const { data, error } = await createClient()
     .from('profiles')
-    .select('id, full_name, phone, company_name, email, created_at')
+    .select(PROFILE_COLUMNS)
     .eq('id', uid)
     .maybeSingle()
   if (error || !data) return null
@@ -86,14 +115,21 @@ export async function getMyProfile(): Promise<Profile | null> {
     companyName: row.company_name,
     email: row.email,
     createdAt: row.created_at,
+    address: row.address ?? '',
+    gstin: row.gstin ?? '',
+    stateName: row.state_name ?? '',
+    stateCode: row.state_code ?? '',
+    pan: row.pan ?? '',
+    bankAccountName: row.bank_account_name ?? '',
+    bankName: row.bank_name ?? '',
+    accountNumber: row.account_number ?? '',
+    ifscCode: row.ifsc_code ?? '',
+    bankBranch: row.bank_branch ?? '',
+    jurisdiction: row.jurisdiction ?? '',
   }
 }
 
-export async function updateMyProfile(input: {
-  fullName: string
-  phone: string
-  companyName: string
-}): Promise<void> {
+export async function updateMyProfile(input: ProfileInput): Promise<void> {
   const { data: userData } = await createClient().auth.getUser()
   const user = userData.user
   if (!user) throw new Error('Not authenticated')
@@ -103,10 +139,21 @@ export async function updateMyProfile(input: {
     .upsert(
       {
         id: user.id,
+        email: user.email ?? '',
         full_name: input.fullName.trim(),
         phone: input.phone.trim(),
         company_name: input.companyName.trim(),
-        email: user.email ?? '',
+        address: input.address.trim(),
+        gstin: input.gstin.trim(),
+        state_name: input.stateName.trim(),
+        state_code: input.stateCode.trim(),
+        pan: input.pan.trim(),
+        bank_account_name: input.bankAccountName.trim(),
+        bank_name: input.bankName.trim(),
+        account_number: input.accountNumber.trim(),
+        ifsc_code: input.ifscCode.trim(),
+        bank_branch: input.bankBranch.trim(),
+        jurisdiction: input.jurisdiction.trim(),
       },
       { onConflict: 'id' },
     )
