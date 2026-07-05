@@ -18,6 +18,7 @@ type DbRow = {
   total: number
   created_at: string
   updated_at: string
+  template: string
 }
 
 function fromDb(row: DbRow): Invoice {
@@ -37,6 +38,7 @@ function fromDb(row: DbRow): Invoice {
     total: Number(row.total),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    template: row.template ?? 'classic',
   }
 }
 
@@ -96,6 +98,7 @@ export async function saveInvoice(invoice: Invoice): Promise<void> {
       total: invoice.total,
       created_at: invoice.createdAt,
       updated_at: invoice.updatedAt,
+      template: invoice.template ?? 'classic',
     })
   if (error) throw error
 }

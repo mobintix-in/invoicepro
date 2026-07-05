@@ -22,3 +22,50 @@ body {
     background: white;
   }
 }
+
+/* ── Accent themes ──────────────────────────────────────────────────────────
+   The app's accent color is Tailwind "indigo". In Tailwind v4 every color
+   utility reads a CSS variable (e.g. `bg-indigo-600` → `var(--color-indigo-600)`),
+   so switching themes is just remapping the indigo shade variables onto another
+   palette via a `data-accent` attribute on <html>. Default (no attribute) =
+   indigo. Semantic colors (green/blue/red status buttons) are left untouched. */
+[data-accent='violet'] {
+  --color-indigo-50: var(--color-violet-50);
+  --color-indigo-100: var(--color-violet-100);
+  --color-indigo-500: var(--color-violet-500);
+  --color-indigo-600: var(--color-violet-600);
+  --color-indigo-700: var(--color-violet-700);
+  --color-indigo-800: var(--color-violet-800);
+}
+[data-accent='blue'] {
+  --color-indigo-50: var(--color-blue-50);
+  --color-indigo-100: var(--color-blue-100);
+  --color-indigo-500: var(--color-blue-500);
+  --color-indigo-600: var(--color-blue-600);
+  --color-indigo-700: var(--color-blue-700);
+  --color-indigo-800: var(--color-blue-800);
+}
+[data-accent='emerald'] {
+  --color-indigo-50: var(--color-emerald-50);
+  --color-indigo-100: var(--color-emerald-100);
+  --color-indigo-500: var(--color-emerald-500);
+  --color-indigo-600: var(--color-emerald-600);
+  --color-indigo-700: var(--color-emerald-700);
+  --color-indigo-800: var(--color-emerald-800);
+}
+[data-accent='teal'] {
+  --color-indigo-50: var(--color-teal-50);
+  --color-indigo-100: var(--color-teal-100);
+  --color-indigo-500: var(--color-teal-500);
+  --color-indigo-600: var(--color-teal-600);
+  --color-indigo-700: var(--color-teal-700);
+  --color-indigo-800: var(--color-teal-800);
+}
+[data-accent='rose'] {
+  --color-indigo-50: var(--color-rose-50);
+  --color-indigo-100: var(--color-rose-100);
+  --color-indigo-500: var(--color-rose-500);
+  --color-indigo-600: var(--color-rose-600);
+  --color-indigo-700: var(--color-rose-700);
+  --color-indigo-800: var(--color-rose-800);
+}
