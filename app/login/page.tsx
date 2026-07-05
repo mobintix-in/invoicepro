@@ -8,6 +8,9 @@ export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [companyName, setCompanyName] = useState('')
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -35,15 +38,27 @@ export default function LoginPage() {
           router.refresh()
         }
       } else {
-        const { data, error } = await supabase.auth.signUp({ email, password })
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            // Stored as user metadata; a DB trigger copies it into `profiles`.
+            data: {
+              full_name: fullName.trim(),
+              phone: phone.trim(),
+              company_name: companyName.trim(),
+            },
+          },
+        })
         if (error) {
           setError(error.message)
         } else if (data.session) {
           // Email confirmation is disabled — the user is already signed in.
-          router.push('/')
+          // New accounts have no active subscription, so land on the paywall.
+          router.push('/subscribe')
           router.refresh()
         } else {
-          setMessage('Check your email for a confirmation link.')
+          setMessage('Check your email for a confirmation link, then sign in to subscribe.')
         }
       }
     } catch (err) {
@@ -84,6 +99,52 @@ export default function LoginPage() {
         {/* Card */}
         <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {mode === 'signup' && (
+              <>
+                <div>
+                  <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
+                    Full Name
+                  </label>
+                  <input
+                    id="fullName"
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Full Name"
+                    className="mt-1.5 block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
+                    Company Name
+                  </label>
+                  <input
+                    id="companyName"
+                    type="text"
+                    required
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="Company Name"
+                    className="mt-1.5 block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                    Phone Number
+                  </label>
+                  <input
+                    id="phone"
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+91 99999 99999"
+                    className="mt-1.5 block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+              </>
+            )}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email

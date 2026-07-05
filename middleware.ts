@@ -13,6 +13,8 @@ export async function middleware(request: NextRequest) {
 
   // Without configured Supabase env we cannot validate a session; treat as unauthenticated.
   let isAuthenticated = false
+  let isAdmin = false
+  let hasActiveSubscription = false
 
   if (hasSupabaseEnv) {
     const supabase = createServerClient(
@@ -42,14 +44,37 @@ export async function middleware(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
     isAuthenticated = !!user
+
+    if (isAuthenticated) {
+      // Single round-trip: are they an admin, and is their subscription active?
+      const { data } = await supabase
+        .rpc('my_access')
+        .single<{ is_admin: boolean; is_active: boolean }>()
+      isAdmin = !!data?.is_admin
+      hasActiveSubscription = !!data?.is_active
+    }
   }
 
-  if (!isAuthenticated && pathname !== '/login') {
+  if (!isAuthenticated) {
+    if (pathname === '/login') return response
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (isAuthenticated && pathname === '/login') {
+  // Authenticated from here on.
+  if (pathname === '/login') {
     return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  // Paywall: without an active subscription, the only reachable pages are the
+  // subscribe screen and (for admins) the approval console.
+  const allowedWhenUnpaid = pathname === '/subscribe' || (isAdmin && pathname === '/admin')
+  if (!hasActiveSubscription && !isAdmin && pathname !== '/subscribe') {
+    return NextResponse.redirect(new URL('/subscribe', request.url))
+  }
+  // Admins may not have a personal subscription but should still reach /admin
+  // and /subscribe freely; block them from the rest only if truly unpaid.
+  if (!hasActiveSubscription && isAdmin && !allowedWhenUnpaid) {
+    return NextResponse.redirect(new URL('/admin', request.url))
   }
 
   return response
