@@ -24,24 +24,32 @@ export default function LoginPage() {
     setMessage(null)
     setLoading(true)
 
-    if (mode === 'signin') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        setError(error.message)
+    try {
+      if (mode === 'signin') {
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) {
+          setError(error.message)
+        } else {
+          router.push('/')
+          router.refresh()
+        }
       } else {
-        router.push('/')
-        router.refresh()
+        const { data, error } = await supabase.auth.signUp({ email, password })
+        if (error) {
+          setError(error.message)
+        } else if (data.session) {
+          // Email confirmation is disabled — the user is already signed in.
+          router.push('/')
+          router.refresh()
+        } else {
+          setMessage('Check your email for a confirmation link.')
+        }
       }
-    } else {
-      const { error } = await supabase.auth.signUp({ email, password })
-      if (error) {
-        setError(error.message)
-      } else {
-        setMessage('Check your email for a confirmation link.')
-      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
@@ -140,6 +148,7 @@ export default function LoginPage() {
               <>
                 Don&apos;t have an account?{' '}
                 <button
+                  type="button"
                   onClick={() => { setMode('signup'); setError(null); setMessage(null) }}
                   className="font-medium text-indigo-600 hover:text-indigo-700"
                 >
@@ -150,6 +159,7 @@ export default function LoginPage() {
               <>
                 Already have an account?{' '}
                 <button
+                  type="button"
                   onClick={() => { setMode('signin'); setError(null); setMessage(null) }}
                   className="font-medium text-indigo-600 hover:text-indigo-700"
                 >
