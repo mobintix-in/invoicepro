@@ -48,6 +48,71 @@ export async function getMySubscription(): Promise<Subscription | null> {
   return fromRow(data as SubRow)
 }
 
+// ── Profile ──────────────────────────────────────────────────────────────────
+
+export interface Profile {
+  id: string
+  fullName: string
+  phone: string
+  companyName: string
+  email: string
+  createdAt: string | null
+}
+
+type ProfileRow = {
+  id: string
+  full_name: string
+  phone: string
+  company_name: string
+  email: string
+  created_at: string | null
+}
+
+export async function getMyProfile(): Promise<Profile | null> {
+  const { data: userData } = await createClient().auth.getUser()
+  const uid = userData.user?.id
+  if (!uid) return null
+  const { data, error } = await createClient()
+    .from('profiles')
+    .select('id, full_name, phone, company_name, email, created_at')
+    .eq('id', uid)
+    .maybeSingle()
+  if (error || !data) return null
+  const row = data as ProfileRow
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    phone: row.phone,
+    companyName: row.company_name,
+    email: row.email,
+    createdAt: row.created_at,
+  }
+}
+
+export async function updateMyProfile(input: {
+  fullName: string
+  phone: string
+  companyName: string
+}): Promise<void> {
+  const { data: userData } = await createClient().auth.getUser()
+  const user = userData.user
+  if (!user) throw new Error('Not authenticated')
+  // Upsert so it also works for any legacy account missing a profile row.
+  const { error } = await createClient()
+    .from('profiles')
+    .upsert(
+      {
+        id: user.id,
+        full_name: input.fullName.trim(),
+        phone: input.phone.trim(),
+        company_name: input.companyName.trim(),
+        email: user.email ?? '',
+      },
+      { onConflict: 'id' },
+    )
+  if (error) throw error
+}
+
 /**
  * Records a payment attempt for manual review. Creates the row as 'pending'
  * (or flips a previously rejected/expired row back to 'pending').

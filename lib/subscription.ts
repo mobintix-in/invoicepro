@@ -8,9 +8,9 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 export const SUBSCRIPTION = {
-  upiId: 'your-upi-id@bank', // e.g. 'aryanbhimani@okhdfcbank'
+  upiId: '9408962204@kotakbank', // e.g. 'aryanbhimani@okhdfcbank'
   payeeName: 'InvoicePro',
-  priceInr: 199,
+  priceInr: 299,
   planMonths: 1,
 } as const
 

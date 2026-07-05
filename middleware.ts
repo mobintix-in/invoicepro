@@ -65,15 +65,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // Paywall: without an active subscription, the only reachable pages are the
-  // subscribe screen and (for admins) the approval console.
-  const allowedWhenUnpaid = pathname === '/subscribe' || (isAdmin && pathname === '/admin')
-  if (!hasActiveSubscription && !isAdmin && pathname !== '/subscribe') {
+  // Paywall: without an active subscription, only the subscribe screen and the
+  // account profile are reachable (admins also get the approval console).
+  const unpaidAllowed = pathname === '/subscribe' || pathname === '/profile'
+  if (!hasActiveSubscription && !isAdmin && !unpaidAllowed) {
     return NextResponse.redirect(new URL('/subscribe', request.url))
   }
-  // Admins may not have a personal subscription but should still reach /admin
-  // and /subscribe freely; block them from the rest only if truly unpaid.
-  if (!hasActiveSubscription && isAdmin && !allowedWhenUnpaid) {
+  // Admins may not have a personal subscription but should still reach /admin,
+  // /subscribe, and /profile freely; block them from the rest only if unpaid.
+  if (!hasActiveSubscription && isAdmin && !unpaidAllowed && pathname !== '/admin') {
     return NextResponse.redirect(new URL('/admin', request.url))
   }
 
