@@ -68,12 +68,6 @@ export default function Navbar() {
           <nav className="hidden md:flex flex-1 items-center justify-center gap-4 overflow-x-auto px-4 no-scrollbar">
             {[
               { name: 'Invoices', path: '/' },
-              { name: 'Production', path: '/production' },
-              { name: 'Selling', path: '/selling' },
-              { name: 'Worker', path: '/worker' },
-              { name: 'Coal', path: '/coal' },
-              { name: 'Sand', path: '/sand' },
-              { name: 'Bugauses', path: '/bugauses' },
             ].map((item) => (
               <Link
                 key={item.name}
