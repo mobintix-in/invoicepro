@@ -37,6 +37,7 @@ export interface Invoice {
   total: number
   createdAt: string
   updatedAt: string
+  template?: string
   // GST / Tax Invoice fields
   sellerPan?: string
   bankAccountName?: string
