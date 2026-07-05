@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Invoice, LineItem, Party, InvoiceStatus } from '@/types'
 import { saveInvoice, nextInvoiceNumber } from '@/lib/storage'
 import { getMyProfile } from '@/lib/account'
+import { listClients, type Client } from '@/lib/clients'
 import { generateId, today, daysFromNow, formatCurrency } from '@/lib/utils'
 
 const inputCls =
@@ -50,10 +51,16 @@ export default function InvoiceForm({ mode, initialData }: Props) {
   const [buyerOrderNo, setBuyerOrderNo] = useState(() => initialData?.buyerOrderNo ?? '')
   const [dispatchThrough, setDispatchThrough] = useState(() => initialData?.dispatchThrough ?? '')
   const [destination, setDestination] = useState(() => initialData?.destination ?? '')
+  const [clients, setClients] = useState<Client[]>([])
 
   const subtotal = lineItems.reduce((s, item) => s + item.amount, 0)
   const tax = subtotal * (taxRate / 100)
   const total = subtotal + tax
+
+  // Saved clients power the "Bill To" quick-picker.
+  useEffect(() => {
+    listClients().then(setClients).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (mode !== 'new') return
@@ -257,6 +264,38 @@ export default function InvoiceForm({ mode, initialData }: Props) {
             onChange={setTo}
             inputCls={inputCls}
             labelCls={labelCls}
+            beforeFields={
+              clients.length > 0 ? (
+                <div>
+                  <label className={labelCls}>Use a saved client</label>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const c = clients.find((x) => x.id === e.target.value)
+                      if (c) {
+                        setTo({
+                          name: c.name,
+                          email: c.email,
+                          address: c.address,
+                          phone: c.phone,
+                          gstin: c.gstin,
+                          stateName: c.stateName,
+                          stateCode: c.stateCode,
+                        })
+                      }
+                    }}
+                    className={inputCls}
+                  >
+                    <option value="">Select a client…</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name || c.email || 'Unnamed client'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null
+            }
           />
         </div>
 
@@ -707,12 +746,14 @@ function PartySection({
   onChange,
   inputCls,
   labelCls,
+  beforeFields,
 }: {
   title: string
   party: Party
   onChange: (p: Party) => void
   inputCls: string
   labelCls: string
+  beforeFields?: React.ReactNode
 }) {
   function set(field: keyof Party, value: string) {
     onChange({ ...party, [field]: value })
@@ -721,6 +762,7 @@ function PartySection({
   return (
     <Section title={title}>
       <div className="space-y-3">
+        {beforeFields}
         <div>
           <label className={labelCls}>Name / Company</label>
           <input
