@@ -55,13 +55,17 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Public pages reachable without a session: the marketing home and the auth screen.
+  const isPublicPage = pathname === '/welcome' || pathname === '/login'
+
   if (!isAuthenticated) {
-    if (pathname === '/login') return response
-    return NextResponse.redirect(new URL('/login', request.url))
+    if (isPublicPage) return response
+    // Send visitors to the marketing home page — the front door of the service.
+    return NextResponse.redirect(new URL('/welcome', request.url))
   }
 
-  // Authenticated from here on.
-  if (pathname === '/login') {
+  // Authenticated from here on — no reason to see the marketing or login pages.
+  if (isPublicPage) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 

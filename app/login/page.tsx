@@ -1,17 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [companyName, setCompanyName] = useState('')
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  // Deep-link support: /login?mode=signup opens the sign-up form directly.
+  const [mode, setMode] = useState<'signin' | 'signup'>(
+    searchParams.get('mode') === 'signup' ? 'signup' : 'signin',
+  )
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -252,5 +256,14 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// useSearchParams() needs a Suspense boundary to keep the route statically renderable.
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   )
 }

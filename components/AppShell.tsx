@@ -6,8 +6,8 @@ import Sidebar from '@/components/Sidebar'
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
-  // The login screen is full-bleed — no sidebar, no offset.
-  if (pathname === '/login') return <>{children}</>
+  // The marketing home and login screens are full-bleed — no sidebar, no offset.
+  if (pathname === '/welcome' || pathname === '/login') return <>{children}</>
 
   return (
     <div>
