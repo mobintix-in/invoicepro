@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import MarketingHeader from '@/components/MarketingHeader'
-import BrandLogo from '@/components/BrandLogo'
+import MarketingFooter from '@/components/MarketingFooter'
 import { formatBlogDate } from '@/lib/blog'
 import { getPublishedPostBySlug } from '@/lib/blog-server'
 
@@ -77,14 +77,7 @@ export default async function BlogPostPage({
         </div>
       </article>
 
-      <footer className="border-t border-gray-100">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-8 text-sm text-gray-500 sm:flex-row sm:px-6 lg:px-8">
-          <Link href="/welcome" aria-label="InvoicePro home">
-            <BrandLogo />
-          </Link>
-          <p>© {new Date().getFullYear()} InvoicePro. All rights reserved.</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   )
 }

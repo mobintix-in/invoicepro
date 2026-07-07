@@ -4,6 +4,7 @@ import { listPublishedPosts } from '@/lib/blog-server'
 import { listActivePackages } from '@/lib/packages-server'
 import BrandLogo from '@/components/BrandLogo'
 import ContactForm from '@/components/ContactForm'
+import MarketingFooter from '@/components/MarketingFooter'
 
 export const metadata = {
   title: 'InvoicePro – Simple invoicing for your business',
@@ -564,31 +565,7 @@ export default async function WelcomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-gray-500 sm:flex-row sm:px-6 lg:px-8">
-          <BrandLogo />
-          <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            <Link href="#services" className="transition-colors hover:text-gray-900">Services</Link>
-            <Link href="#about" className="transition-colors hover:text-gray-900">About</Link>
-            <Link href="#pricing" className="transition-colors hover:text-gray-900">Pricing</Link>
-            <Link href="/blog" className="transition-colors hover:text-gray-900">Blog</Link>
-            <Link href="#contact" className="transition-colors hover:text-gray-900">Contact</Link>
-          </nav>
-          <p className="text-center sm:text-right">
-            © {new Date().getFullYear()} InvoicePro
-            <span className="mx-1.5 text-gray-300">·</span>
-            Developed by{' '}
-            <a
-              href="https://www.mobintix.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-indigo-600 transition-colors hover:text-indigo-700"
-            >
-              Mobintix Infotech
-            </a>
-          </p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   )
 }
