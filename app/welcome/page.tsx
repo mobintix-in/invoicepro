@@ -74,6 +74,33 @@ const stats = [
   { value: '24/7', label: 'Access anywhere' },
 ]
 
+const faqs = [
+  {
+    q: 'What is InvoicePro?',
+    a: 'InvoicePro is a simple invoicing tool for freelancers and small businesses in India. Create GST-ready invoices, attach a UPI QR code, and share a pixel-perfect PDF — all from your browser.',
+  },
+  {
+    q: 'Do I need to install anything?',
+    a: 'No. InvoicePro runs entirely in your browser. Sign up, add your business details once, and you can send your first invoice in minutes.',
+  },
+  {
+    q: 'Are the invoices GST-compliant?',
+    a: 'Yes. GSTIN, state codes, HSN/SAC codes, and CGST/SGST or IGST tax splits are all built in, so every invoice is compliant by default.',
+  },
+  {
+    q: 'How do my clients pay me?',
+    a: 'Every invoice can carry a UPI QR code. Your client scans it with any UPI app — GPay, PhonePe, Paytm or BHIM — and pays the exact amount in a single tap.',
+  },
+  {
+    q: 'Can I change my plan later?',
+    a: 'Absolutely. You can upgrade or downgrade anytime. Starter covers up to 50 invoices a month, while Business and Enterprise are unlimited.',
+  },
+  {
+    q: 'How does billing work?',
+    a: 'Pick a plan, pay the amount over UPI, and submit your payment reference. Your account is activated as soon as we verify the payment.',
+  },
+]
+
 export default async function WelcomePage() {
   const [recentPosts, packages] = await Promise.all([
     listPublishedPosts(3),
@@ -98,6 +125,9 @@ export default async function WelcomePage() {
             </Link>
             <Link href="/blog" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:text-gray-900 md:inline-flex">
               Blog
+            </Link>
+            <Link href="#faq" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:text-gray-900 md:inline-flex">
+              FAQ
             </Link>
             <Link href="#contact" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:text-gray-900 md:inline-flex">
               Contact
@@ -410,6 +440,44 @@ export default async function WelcomePage() {
       </section>
       )}
 
+      {/* FAQ */}
+      <section id="faq" className="scroll-mt-16 mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <span className="text-sm font-semibold uppercase tracking-widest text-indigo-600">
+            FAQ
+          </span>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
+            Frequently asked questions
+          </h2>
+          <p className="mt-3 text-gray-600">
+            Everything you need to know before getting started.
+          </p>
+        </div>
+
+        <div className="mt-10 space-y-3">
+          {faqs.map((item) => (
+            <details
+              key={item.q}
+              className="group rounded-2xl border border-gray-200 bg-white p-5 shadow-sm [&_summary::-webkit-details-marker]:hidden"
+            >
+              <summary className="flex cursor-pointer items-center justify-between gap-4 text-base font-semibold text-gray-900">
+                {item.q}
+                <svg
+                  className="h-5 w-5 shrink-0 text-gray-400 transition-transform group-open:rotate-180"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </summary>
+              <p className="mt-3 text-sm leading-relaxed text-gray-600">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
       {/* Contact */}
       <section id="contact" className="scroll-mt-16 bg-gray-50 py-16 sm:py-20">
         <div className="mx-auto grid max-w-6xl gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
@@ -506,7 +574,19 @@ export default async function WelcomePage() {
             <Link href="/blog" className="transition-colors hover:text-gray-900">Blog</Link>
             <Link href="#contact" className="transition-colors hover:text-gray-900">Contact</Link>
           </nav>
-          <p>© {new Date().getFullYear()} InvoicePro</p>
+          <p className="text-center sm:text-right">
+            © {new Date().getFullYear()} InvoicePro
+            <span className="mx-1.5 text-gray-300">·</span>
+            Developed by{' '}
+            <a
+              href="https://www.mobintix.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-indigo-600 transition-colors hover:text-indigo-700"
+            >
+              Mobintix Infotech
+            </a>
+          </p>
         </div>
       </footer>
     </div>

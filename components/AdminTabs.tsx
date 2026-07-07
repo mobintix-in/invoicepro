@@ -7,6 +7,7 @@ const tabs = [
   { name: 'Users', href: '/admin' },
   { name: 'Blog', href: '/admin/blog' },
   { name: 'Packages', href: '/admin/packages' },
+  { name: 'Messages', href: '/admin/messages' },
 ]
 
 export default function AdminTabs() {
