@@ -7,6 +7,8 @@ import { QRCodeSVG } from 'qrcode.react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { getMySubscription, submitPayment } from '@/lib/account'
 import { SUBSCRIPTION, upiPaymentUri, type Subscription } from '@/lib/subscription'
+import { listActivePackages } from '@/lib/packages-admin'
+import { type Package } from '@/lib/packages'
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
@@ -18,6 +20,8 @@ export default function SubscribePage() {
   // Start "loading" only when we actually have a backend to query.
   const [loading, setLoading] = useState(isSupabaseConfigured())
   const [sub, setSub] = useState<Subscription | null>(null)
+  const [packages, setPackages] = useState<Package[]>([])
+  const [selectedKey, setSelectedKey] = useState<string>('')
   const [utr, setUtr] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +37,16 @@ export default function SubscribePage() {
       setSub(s)
       setLoading(false)
     })
+    listActivePackages().then((pkgs) => {
+      setPackages(pkgs)
+      // Default to the highlighted plan, else the first one.
+      const preferred = pkgs.find((p) => p.highlighted) ?? pkgs[0]
+      if (preferred) setSelectedKey(preferred.key)
+    })
   }, [])
+
+  const selectedPackage = packages.find((p) => p.key === selectedKey) ?? null
+  const amountDue = selectedPackage?.priceInr ?? SUBSCRIPTION.priceInr
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -44,7 +57,10 @@ export default function SubscribePage() {
     setError(null)
     setSubmitting(true)
     try {
-      await submitPayment(utr)
+      await submitPayment(
+        utr,
+        selectedPackage ? { key: selectedPackage.key, priceInr: selectedPackage.priceInr } : undefined,
+      )
       setUtr('')
       await refresh()
     } catch (err) {
@@ -85,6 +101,10 @@ export default function SubscribePage() {
           <PayFlow
             rejected={status === 'rejected'}
             expired={status === 'expired'}
+            packages={packages}
+            selectedKey={selectedKey}
+            onSelectKey={setSelectedKey}
+            amountDue={amountDue}
             utr={utr}
             setUtr={setUtr}
             onSubmit={handleSubmit}
@@ -156,6 +176,10 @@ function StatePending({ utr, onRefresh }: { utr: string | null; onRefresh: () =>
 function PayFlow({
   rejected,
   expired,
+  packages,
+  selectedKey,
+  onSelectKey,
+  amountDue,
   utr,
   setUtr,
   onSubmit,
@@ -164,6 +188,10 @@ function PayFlow({
 }: {
   rejected: boolean
   expired: boolean
+  packages: Package[]
+  selectedKey: string
+  onSelectKey: (key: string) => void
+  amountDue: number
   utr: string
   setUtr: (v: string) => void
   onSubmit: (e: React.FormEvent) => void
@@ -183,19 +211,58 @@ function PayFlow({
         </p>
       )}
 
+      {packages.length > 0 && (
+        <div className="mb-6">
+          <div className="mb-2 text-sm font-medium text-gray-700">Choose your plan</div>
+          <div className="space-y-2">
+            {packages.map((p) => {
+              const active = p.key === selectedKey
+              return (
+                <button
+                  key={p.key}
+                  type="button"
+                  onClick={() => onSelectKey(p.key)}
+                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
+                    active
+                      ? 'border-indigo-600 ring-2 ring-indigo-500/20'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-900">{p.name}</span>
+                      {p.highlighted && (
+                        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
+                          Popular
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500">{p.tagline}</div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-bold text-gray-900">₹{p.priceInr.toLocaleString('en-IN')}</div>
+                    <div className="text-[11px] text-gray-400">/ month</div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col items-center">
         <div className="text-sm text-gray-500">Amount due</div>
         <div className="text-3xl font-bold text-gray-900">
-          ₹{SUBSCRIPTION.priceInr}
+          ₹{amountDue.toLocaleString('en-IN')}
           <span className="text-base font-medium text-gray-400"> / month</span>
         </div>
 
         <div className="mt-5 rounded-xl border border-gray-200 p-4">
-          <QRCodeSVG value={upiPaymentUri()} size={188} level="M" marginSize={2} />
+          <QRCodeSVG value={upiPaymentUri(amountDue)} size={188} level="M" marginSize={2} />
         </div>
         <p className="mt-3 text-center text-sm text-gray-500">
           Scan with any UPI app (GPay, PhonePe, Paytm, BHIM) to pay
-          <span className="font-medium text-gray-700"> ₹{SUBSCRIPTION.priceInr}</span> to
+          <span className="font-medium text-gray-700"> ₹{amountDue.toLocaleString('en-IN')}</span> to
           <span className="font-medium text-gray-700"> {SUBSCRIPTION.upiId}</span>.
         </p>
       </div>

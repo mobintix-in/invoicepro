@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Invoice, LineItem, Party, InvoiceStatus } from '@/types'
-import { saveInvoice, nextInvoiceNumber } from '@/lib/storage'
+import { createInvoice, updateInvoice, nextInvoiceNumber, getInvoiceQuota, type InvoiceQuota } from '@/lib/storage'
 import { getMyProfile } from '@/lib/account'
 import { listClients, type Client } from '@/lib/clients'
 import { generateId, today, daysFromNow, formatCurrency } from '@/lib/utils'
@@ -52,6 +52,7 @@ export default function InvoiceForm({ mode, initialData }: Props) {
   const [dispatchThrough, setDispatchThrough] = useState(() => initialData?.dispatchThrough ?? '')
   const [destination, setDestination] = useState(() => initialData?.destination ?? '')
   const [clients, setClients] = useState<Client[]>([])
+  const [quota, setQuota] = useState<InvoiceQuota | null>(null)
 
   const subtotal = lineItems.reduce((s, item) => s + item.amount, 0)
   const tax = subtotal * (taxRate / 100)
@@ -68,6 +69,9 @@ export default function InvoiceForm({ mode, initialData }: Props) {
     nextInvoiceNumber()
       .then(setInvoiceNumber)
       .catch((err) => console.warn(err.message || 'Failed to generate number'))
+
+    // Surface the plan's monthly invoice allowance up front.
+    getInvoiceQuota().then(setQuota).catch(() => {})
 
     // Pre-fill the seller ("From") side and bank block from the saved profile.
     getMyProfile()
@@ -157,12 +161,16 @@ export default function InvoiceForm({ mode, initialData }: Props) {
       destination,
     }
     try {
-      await saveInvoice(invoice)
+      if (mode === 'new') await createInvoice(invoice)
+      else await updateInvoice(invoice)
       router.push(`/invoices/${invoice.id}`)
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
       console.warn("Failed to save invoice:", msg)
-      if (msg === 'Not authenticated') {
+      if (msg === 'INVOICE_LIMIT_REACHED') {
+        alert("You've reached your plan's monthly invoice limit. Upgrade your plan to create more.")
+        router.push('/subscribe')
+      } else if (msg === 'Not authenticated') {
         alert("You must be logged in to save an invoice.")
         router.push('/login')
       } else {
@@ -178,6 +186,8 @@ export default function InvoiceForm({ mode, initialData }: Props) {
       router.push('/')
     }
   }
+
+  const limitReached = mode === 'new' && !!quota?.reached
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -195,12 +205,42 @@ export default function InvoiceForm({ mode, initialData }: Props) {
           </button>
           <button
             onClick={handleSave}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+            disabled={limitReached}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Save Invoice
           </button>
         </div>
       </div>
+
+      {mode === 'new' && quota && quota.limit !== null && (
+        <div
+          className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${
+            limitReached
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-gray-200 bg-gray-50 text-gray-600'
+          }`}
+        >
+          <span>
+            {limitReached ? (
+              <>You&apos;ve used all <b>{quota.limit}</b> invoices in your plan this month.</>
+            ) : (
+              <>
+                <b>{quota.used}</b> of <b>{quota.limit}</b> invoices used this month
+                {quota.remaining !== null && <> · {quota.remaining} left</>}
+              </>
+            )}
+          </span>
+          {limitReached && (
+            <button
+              onClick={() => router.push('/subscribe')}
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-700"
+            >
+              Upgrade plan
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Invoice details */}
@@ -713,7 +753,8 @@ export default function InvoiceForm({ mode, initialData }: Props) {
           </button>
           <button
             onClick={handleSave}
-            className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+            disabled={limitReached}
+            className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Save Invoice
           </button>

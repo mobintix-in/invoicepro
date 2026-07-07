@@ -5,7 +5,7 @@ import { useRouter, notFound } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import type { Invoice, InvoiceStatus } from '@/types'
-import { getInvoice, saveInvoice, deleteInvoice } from '@/lib/storage'
+import { getInvoice, updateInvoice, deleteInvoice } from '@/lib/storage'
 
 const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false })
 const InvoicePDFPreview = dynamic(() => import('@/components/InvoicePDFPreview'), {
@@ -56,7 +56,7 @@ export default function InvoicePreview({ id }: { id: string }) {
       updatedAt: new Date().toISOString(),
     }
     try {
-      await saveInvoice(updated)
+      await updateInvoice(updated)
       setInvoice(updated)
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)

@@ -140,6 +140,7 @@ export default function AdminPage() {
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Contact</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Plan</th>
                 <th className="px-4 py-3">UTR / Ref</th>
                 <th className="px-4 py-3">Expires</th>
                 <th className="px-4 py-3 text-right">Actions</th>
@@ -160,6 +161,15 @@ export default function AdminPage() {
                     <StatusPill status={u.status} />
                     {u.status === 'pending' && u.amount != null && (
                       <div className="mt-1 text-xs text-gray-500">₹{u.amount}</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.planKey ? (
+                      <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold capitalize text-indigo-700">
+                        {u.planKey}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-gray-800">{u.utr || '—'}</td>

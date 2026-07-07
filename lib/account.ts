@@ -7,6 +7,7 @@ type SubRow = {
   utr: string | null
   amount: number | null
   plan_months: number
+  plan_key?: string | null
   submitted_at: string | null
   activated_at: string | null
   expires_at: string | null
@@ -20,6 +21,7 @@ function fromRow(row: SubRow): Subscription {
     utr: row.utr,
     amount: row.amount === null ? null : Number(row.amount),
     planMonths: row.plan_months,
+    planKey: row.plan_key ?? null,
     submittedAt: row.submitted_at,
     activatedAt: row.activated_at,
     expiresAt: row.expires_at,
@@ -163,11 +165,21 @@ export async function updateMyProfile(input: ProfileInput): Promise<void> {
 /**
  * Records a payment attempt for manual review. Creates the row as 'pending'
  * (or flips a previously rejected/expired row back to 'pending').
+ *
+ * `plan` is the package the user chose; when omitted we fall back to the legacy
+ * single-plan price (and don't touch plan_key, so this still works before the
+ * packages migration is applied).
  */
-export async function submitPayment(utr: string): Promise<void> {
+export async function submitPayment(
+  utr: string,
+  plan?: { key: string; priceInr: number },
+): Promise<void> {
   const { data: userData } = await createClient().auth.getUser()
   const uid = userData.user?.id
   if (!uid) throw new Error('Not authenticated')
+
+  const amount = plan?.priceInr ?? SUBSCRIPTION.priceInr
+  const planFields = plan ? { plan_key: plan.key } : {}
 
   const existing = await getMySubscription()
   const supabase = createClient()
@@ -178,7 +190,8 @@ export async function submitPayment(utr: string): Promise<void> {
       .update({
         status: 'pending',
         utr: utr.trim(),
-        amount: SUBSCRIPTION.priceInr,
+        amount,
+        ...planFields,
         submitted_at: new Date().toISOString(),
         activated_at: null,
         updated_at: new Date().toISOString(),
@@ -192,7 +205,8 @@ export async function submitPayment(utr: string): Promise<void> {
     user_id: uid,
     status: 'pending',
     utr: utr.trim(),
-    amount: SUBSCRIPTION.priceInr,
+    amount,
+    ...planFields,
     plan_months: SUBSCRIPTION.planMonths,
     submitted_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -263,6 +277,7 @@ export interface UserRow {
   status: SubscriptionStatus | 'none'
   utr: string | null
   amount: number | null
+  planKey: string | null
   submittedAt: string | null
   expiresAt: string | null
 }
@@ -281,7 +296,7 @@ type ProfileWithSub = {
 export async function listAllUsers(): Promise<UserRow[]> {
   const { data, error } = await createClient()
     .from('profiles')
-    .select('id, full_name, company_name, email, phone, created_at, subscriptions(status, utr, amount, submitted_at, expires_at)')
+    .select('id, full_name, company_name, email, phone, created_at, subscriptions(status, utr, amount, plan_key, submitted_at, expires_at)')
     .order('created_at', { ascending: false })
   if (error || !data) return []
   return (data as ProfileWithSub[]).map((row) => {
@@ -296,6 +311,7 @@ export async function listAllUsers(): Promise<UserRow[]> {
       status: (sub?.status as SubscriptionStatus | undefined) ?? 'none',
       utr: sub?.utr ?? null,
       amount: sub?.amount != null ? Number(sub.amount) : null,
+      planKey: sub?.plan_key ?? null,
       submittedAt: sub?.submitted_at ?? null,
       expiresAt: sub?.expires_at ?? null,
     }

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 const tabs = [
   { name: 'Users', href: '/admin' },
   { name: 'Blog', href: '/admin/blog' },
+  { name: 'Packages', href: '/admin/packages' },
 ]
 
 export default function AdminTabs() {

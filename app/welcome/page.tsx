@@ -1,7 +1,7 @@
 import Link from 'next/link'
-import { SUBSCRIPTION } from '@/lib/subscription'
 import { formatBlogDate } from '@/lib/blog'
 import { listPublishedPosts } from '@/lib/blog-server'
+import { listActivePackages } from '@/lib/packages-server'
 import BrandLogo from '@/components/BrandLogo'
 import ContactForm from '@/components/ContactForm'
 
@@ -10,61 +10,6 @@ export const metadata = {
   description:
     'Create GST-ready invoices, share UPI-payable PDFs, and get paid faster. Pick a plan and start in minutes.',
 }
-
-type Package = {
-  name: string
-  price: number
-  tagline: string
-  features: string[]
-  cta: string
-  highlighted: boolean
-}
-
-// Starter is anchored to the real subscription price so the CTA stays truthful.
-const packages: Package[] = [
-  {
-    name: 'Starter',
-    price: SUBSCRIPTION.priceInr,
-    tagline: 'For freelancers & solo founders getting started.',
-    features: [
-      'Up to 50 invoices / month',
-      'Professional PDF export',
-      'UPI QR on every invoice',
-      'Single user',
-      'Email support',
-    ],
-    cta: 'Start with Starter',
-    highlighted: false,
-  },
-  {
-    name: 'Business',
-    price: 799,
-    tagline: 'For growing teams that bill clients every day.',
-    features: [
-      'Unlimited invoices',
-      'GST-ready invoice templates',
-      'Client & contact management',
-      'Up to 5 team members',
-      'Priority support',
-    ],
-    cta: 'Choose Business',
-    highlighted: true,
-  },
-  {
-    name: 'Enterprise',
-    price: 1999,
-    tagline: 'For established companies that need control & scale.',
-    features: [
-      'Everything in Business',
-      'Unlimited team members',
-      'Custom branding & templates',
-      'Dedicated account manager',
-      'API & webhook access',
-    ],
-    cta: 'Talk to sales',
-    highlighted: false,
-  },
-]
 
 const features = [
   {
@@ -130,7 +75,10 @@ const stats = [
 ]
 
 export default async function WelcomePage() {
-  const recentPosts = await listPublishedPosts(3)
+  const [recentPosts, packages] = await Promise.all([
+    listPublishedPosts(3),
+    listActivePackages(),
+  ])
 
   return (
     <div className="min-h-screen bg-white">
@@ -345,6 +293,7 @@ export default async function WelcomePage() {
       </section>
 
       {/* Pricing packages */}
+      {packages.length > 0 && (
       <section id="pricing" className="scroll-mt-16 bg-gray-50 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
@@ -359,7 +308,7 @@ export default async function WelcomePage() {
           <div className="mt-12 grid items-start gap-6 lg:grid-cols-3">
             {packages.map((p) => (
               <div
-                key={p.name}
+                key={p.key}
                 className={`relative flex flex-col rounded-2xl bg-white p-8 shadow-sm ${
                   p.highlighted
                     ? 'border-2 border-indigo-600 shadow-lg lg:-mt-4'
@@ -375,7 +324,7 @@ export default async function WelcomePage() {
                 <p className="mt-1 text-sm text-gray-500">{p.tagline}</p>
                 <div className="mt-5 flex items-baseline gap-1">
                   <span className="text-4xl font-bold tracking-tight text-gray-900">
-                    ₹{p.price.toLocaleString('en-IN')}
+                    ₹{p.priceInr.toLocaleString('en-IN')}
                   </span>
                   <span className="text-sm font-medium text-gray-400">/ month</span>
                 </div>
@@ -412,6 +361,7 @@ export default async function WelcomePage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Blog preview */}
       {recentPosts.length > 0 && (

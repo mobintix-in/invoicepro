@@ -16,13 +16,16 @@ export const SUBSCRIPTION = {
 
 /**
  * Builds a UPI deep-link / QR payload (`upi://pay?...`) that any UPI app
- * (GPay, PhonePe, Paytm, BHIM…) can open or scan to pay the fixed amount.
+ * (GPay, PhonePe, Paytm, BHIM…) can open or scan to pay the given amount.
  */
-export function upiPaymentUri(note = 'InvoicePro Monthly Subscription'): string {
+export function upiPaymentUri(
+  amount: number = SUBSCRIPTION.priceInr,
+  note = 'InvoicePro Monthly Subscription',
+): string {
   const params = new URLSearchParams({
     pa: SUBSCRIPTION.upiId,
     pn: SUBSCRIPTION.payeeName,
-    am: String(SUBSCRIPTION.priceInr),
+    am: String(amount),
     cu: 'INR',
     tn: note,
   })
@@ -37,6 +40,7 @@ export interface Subscription {
   utr: string | null
   amount: number | null
   planMonths: number
+  planKey: string | null
   submittedAt: string | null
   activatedAt: string | null
   expiresAt: string | null

@@ -259,7 +259,7 @@ function LoginForm() {
   )
 }
 
-// useSearchParams() needs a Suspense boundary to keep the route statically renderable.
+// useSearchParams() (read inside LoginForm) needs a Suspense boundary.
 export default function LoginPage() {
   return (
     <Suspense fallback={null}>
