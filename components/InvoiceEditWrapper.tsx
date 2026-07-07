@@ -1,26 +1,34 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import type { Invoice } from '@/types'
 import { getInvoice } from '@/lib/storage'
 import InvoiceForm from '@/components/InvoiceForm'
 
 export default function InvoiceEditWrapper({ id }: { id: string }) {
-  const router = useRouter()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [missing, setMissing] = useState(false)
 
   useEffect(() => {
-    getInvoice(id).then(inv => {
-      if (!inv) {
-        router.replace('/')
-        return
-      }
-      setInvoice(inv)
-      setLoaded(true)
-    }).catch(err => console.warn(err.message || 'Failed to load invoice'))
-  }, [id, router])
+    getInvoice(id)
+      .then(inv => {
+        if (!inv) {
+          setMissing(true)
+          return
+        }
+        setInvoice(inv)
+        setLoaded(true)
+      })
+      .catch(err => {
+        console.warn(err?.message || 'Failed to load invoice')
+        setMissing(true)
+      })
+  }, [id])
+
+  // Data API failed or the invoice doesn't exist → render the 404 page.
+  if (missing) notFound()
 
   if (!loaded) {
     return (
