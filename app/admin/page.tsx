@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { isSupabaseConfigured } from '@/lib/supabase/client'
+import AdminTabs from '@/components/AdminTabs'
 import {
   getMyAccess,
   listAllUsers,
@@ -102,6 +103,7 @@ export default function AdminPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <AdminTabs />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>

@@ -55,19 +55,23 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Public pages reachable without a session: the marketing home and the auth screen.
-  const isPublicPage = pathname === '/welcome' || pathname === '/login'
+  // Auth-gate pages: reachable without a session, but signed-in users are sent
+  // into the app (no reason to show them the marketing home or login screen).
+  const isAuthGatePage = pathname === '/welcome' || pathname === '/login'
+  // Open marketing pages (blog): readable by anyone, signed in or not.
+  const isMarketingPage = pathname === '/blog' || pathname.startsWith('/blog/')
 
   if (!isAuthenticated) {
-    if (isPublicPage) return response
+    if (isAuthGatePage || isMarketingPage) return response
     // Send visitors to the marketing home page — the front door of the service.
     return NextResponse.redirect(new URL('/welcome', request.url))
   }
 
-  // Authenticated from here on — no reason to see the marketing or login pages.
-  if (isPublicPage) {
+  // Authenticated from here on.
+  if (isAuthGatePage) {
     return NextResponse.redirect(new URL('/', request.url))
   }
+  if (isMarketingPage) return response
 
   // Paywall: without an active subscription, only the subscribe screen and the
   // account profile are reachable (admins also get the approval console).
@@ -75,9 +79,10 @@ export async function middleware(request: NextRequest) {
   if (!hasActiveSubscription && !isAdmin && !unpaidAllowed) {
     return NextResponse.redirect(new URL('/subscribe', request.url))
   }
-  // Admins may not have a personal subscription but should still reach /admin,
-  // /subscribe, and /profile freely; block them from the rest only if unpaid.
-  if (!hasActiveSubscription && isAdmin && !unpaidAllowed && pathname !== '/admin') {
+  // Admins may not have a personal subscription but should still reach the admin
+  // console (/admin and its sub-pages), /subscribe, and /profile freely; block
+  // them from the rest only if unpaid.
+  if (!hasActiveSubscription && isAdmin && !unpaidAllowed && !pathname.startsWith('/admin')) {
     return NextResponse.redirect(new URL('/admin', request.url))
   }
 
