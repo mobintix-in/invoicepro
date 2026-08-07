@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import type { Invoice, LineItem, Party, InvoiceStatus } from '@/types'
 import { createInvoice, updateInvoice, nextInvoiceNumber, getInvoiceQuota, type InvoiceQuota } from '@/lib/storage'
 import { getMyProfile } from '@/lib/account'
-import { listClients, type Client } from '@/lib/clients'
+import { listClients, saveClient, type Client } from '@/lib/clients'
+import { parseGstin, lookupGstin } from '@/lib/gstin'
 import { generateId, today, daysFromNow, formatCurrency } from '@/lib/utils'
 
 const inputCls =
@@ -52,6 +53,7 @@ export default function InvoiceForm({ mode, initialData }: Props) {
   const [dispatchThrough, setDispatchThrough] = useState(() => initialData?.dispatchThrough ?? '')
   const [destination, setDestination] = useState(() => initialData?.destination ?? '')
   const [clients, setClients] = useState<Client[]>([])
+  const [savingClient, setSavingClient] = useState(false)
   const [quota, setQuota] = useState<InvoiceQuota | null>(null)
 
   const subtotal = lineItems.reduce((s, item) => s + item.amount, 0)
@@ -62,6 +64,47 @@ export default function InvoiceForm({ mode, initialData }: Props) {
   useEffect(() => {
     listClients().then(setClients).catch(() => {})
   }, [])
+
+  // Fill every "Bill To" field from a saved client in one click.
+  function applyClient(clientId: string) {
+    const c = clients.find((x) => x.id === clientId)
+    if (!c) return
+    setTo({
+      name: c.name,
+      email: c.email,
+      address: c.address,
+      phone: c.phone,
+      gstin: c.gstin,
+      stateName: c.stateName,
+      stateCode: c.stateCode,
+    })
+  }
+
+  // Save whatever is currently typed in "Bill To" as a reusable client.
+  async function saveToAsClient() {
+    if (!to.name.trim() && !to.email.trim()) {
+      alert('Enter at least a name or email in "Bill To" before saving as a client.')
+      return
+    }
+    setSavingClient(true)
+    try {
+      await saveClient({
+        name: to.name,
+        email: to.email,
+        address: to.address,
+        phone: to.phone,
+        gstin: to.gstin ?? '',
+        stateName: to.stateName ?? '',
+        stateCode: to.stateCode ?? '',
+      })
+      setClients(await listClients())
+      alert('Saved to your clients — you can reuse it from the picker next time.')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not save client')
+    } finally {
+      setSavingClient(false)
+    }
+  }
 
   useEffect(() => {
     if (mode !== 'new') return
@@ -297,6 +340,7 @@ export default function InvoiceForm({ mode, initialData }: Props) {
             onChange={setFrom}
             inputCls={inputCls}
             labelCls={labelCls}
+            enableGstinLookup
           />
           <PartySection
             title="Bill To (Client)"
@@ -304,37 +348,52 @@ export default function InvoiceForm({ mode, initialData }: Props) {
             onChange={setTo}
             inputCls={inputCls}
             labelCls={labelCls}
+            enableGstinLookup
             beforeFields={
-              clients.length > 0 ? (
-                <div>
-                  <label className={labelCls}>Use a saved client</label>
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      const c = clients.find((x) => x.id === e.target.value)
-                      if (c) {
-                        setTo({
-                          name: c.name,
-                          email: c.email,
-                          address: c.address,
-                          phone: c.phone,
-                          gstin: c.gstin,
-                          stateName: c.stateName,
-                          stateCode: c.stateCode,
-                        })
-                      }
-                    }}
-                    className={inputCls}
-                  >
-                    <option value="">Select a client…</option>
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name || c.email || 'Unnamed client'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null
+              <div className="space-y-2 rounded-lg border border-indigo-100 bg-indigo-50/50 p-3">
+                {clients.length > 0 ? (
+                  <div>
+                    <label className={labelCls}>Use a saved client</label>
+                    <select
+                      value=""
+                      onChange={(e) => applyClient(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="">Select a client…</option>
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {[c.name || c.email || 'Unnamed client', c.phone, c.gstin]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Picking a client fills in every field below automatically.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-600">
+                    No saved clients yet. Fill in the details below, then{' '}
+                    <b>Save as client</b> to reuse them — or add clients on the{' '}
+                    <a href="/clients" className="font-medium text-indigo-600 hover:underline">
+                      Clients
+                    </a>{' '}
+                    page.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={saveToAsClient}
+                  disabled={savingClient}
+                  className="flex items-center gap-1 text-xs font-semibold text-indigo-600 transition-colors hover:text-indigo-800 disabled:opacity-50"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  {savingClient ? 'Saving…' : 'Save these details as a client'}
+                </button>
+              </div>
             }
           />
         </div>
@@ -788,6 +847,7 @@ function PartySection({
   inputCls,
   labelCls,
   beforeFields,
+  enableGstinLookup,
 }: {
   title: string
   party: Party
@@ -795,10 +855,49 @@ function PartySection({
   inputCls: string
   labelCls: string
   beforeFields?: React.ReactNode
+  enableGstinLookup?: boolean
 }) {
+  const [looking, setLooking] = useState(false)
+  const [lookupMsg, setLookupMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
   function set(field: keyof Party, value: string) {
+    // A GSTIN self-encodes the state, so fill State Name + Code as it's typed.
+    if (field === 'gstin') {
+      const parsed = parseGstin(value)
+      onChange({
+        ...party,
+        gstin: parsed.gstin,
+        ...(parsed.stateName ? { stateName: parsed.stateName, stateCode: parsed.stateCode } : {}),
+      })
+      setLookupMsg(null)
+      return
+    }
     onChange({ ...party, [field]: value })
   }
+
+  // Pull the registered name & address from the GST API (needs a server key).
+  async function fetchDetails() {
+    setLooking(true)
+    setLookupMsg(null)
+    try {
+      const d = await lookupGstin(party.gstin || '')
+      onChange({
+        ...party,
+        name: d.tradeName || d.legalName || party.name,
+        address: d.address || party.address,
+        stateName: d.stateName || party.stateName,
+        stateCode: d.stateCode || party.stateCode,
+      })
+      setLookupMsg({ ok: true, text: `Fetched ${d.legalName || d.tradeName || 'details'}` })
+    } catch (err) {
+      setLookupMsg({ ok: false, text: err instanceof Error ? err.message : 'Lookup failed' })
+    } finally {
+      setLooking(false)
+    }
+  }
+
+  const parsed = parseGstin(party.gstin || '')
+  const gstinEntered = (party.gstin || '').length > 0
 
   return (
     <Section title={title}>
@@ -849,10 +948,41 @@ function PartySection({
           <input
             type="text"
             value={party.gstin || ''}
-            onChange={e => set('gstin', e.target.value.toUpperCase())}
+            onChange={e => set('gstin', e.target.value)}
             placeholder="24AVJPP1377R1ZT"
+            maxLength={15}
             className={inputCls}
           />
+          {enableGstinLookup && gstinEntered && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              {parsed.stateName ? (
+                <span className="text-emerald-600">
+                  {parsed.valid ? '✓ ' : ''}State: {parsed.stateName} ({parsed.stateCode})
+                  {parsed.pan ? ` · PAN ${parsed.pan}` : ''}
+                </span>
+              ) : (
+                <span className="text-gray-400">Unrecognised state code</span>
+              )}
+              {(party.gstin || '').length === 15 && !parsed.valid && (
+                <span className="text-red-500">Invalid GSTIN format</span>
+              )}
+              {parsed.valid && (
+                <button
+                  type="button"
+                  onClick={fetchDetails}
+                  disabled={looking}
+                  className="font-semibold text-indigo-600 transition-colors hover:text-indigo-800 disabled:opacity-50"
+                >
+                  {looking ? 'Fetching…' : 'Fetch name & address'}
+                </button>
+              )}
+              {lookupMsg && (
+                <span className={lookupMsg.ok ? 'text-emerald-600' : 'text-amber-600'}>
+                  {lookupMsg.text}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
