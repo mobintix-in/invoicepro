@@ -7,16 +7,19 @@ export async function GET(request: Request) {
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/'
 
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const isLocalEnv = process.env.NODE_ENV === 'development'
+
+  // Derive the public base URL consistently for both success and error redirects.
+  // On hosted environments the raw `origin` can be an internal address; prefer
+  // the x-forwarded-host header (set by the reverse proxy) when available.
+  const publicBase =
+    !isLocalEnv && forwardedHost ? `https://${forwardedHost}` : origin
+
   if (code) {
     const cookieStore = await cookies()
-    const forwardedHost = request.headers.get('x-forwarded-host')
-    const isLocalEnv = process.env.NODE_ENV === 'development'
 
-    let redirectUrl = `${origin}${next}`
-    if (!isLocalEnv && forwardedHost) {
-      redirectUrl = `https://${forwardedHost}${next}`
-    }
-
+    const redirectUrl = `${publicBase}${next}`
     const response = NextResponse.redirect(redirectUrl)
 
     const supabase = createServerClient(
@@ -48,5 +51,7 @@ export async function GET(request: Request) {
     console.error('Google OAuth exchange code error:', error)
   }
 
-  return NextResponse.redirect(`${origin}/login?error=Google%20authentication%20failed.%20Please%20try%20again.`)
+  return NextResponse.redirect(
+    `${publicBase}/login?error=Google%20authentication%20failed.%20Please%20try%20again.`
+  )
 }
