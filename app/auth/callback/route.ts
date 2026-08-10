@@ -9,6 +9,16 @@ export async function GET(request: Request) {
 
   if (code) {
     const cookieStore = await cookies()
+    const forwardedHost = request.headers.get('x-forwarded-host')
+    const isLocalEnv = process.env.NODE_ENV === 'development'
+
+    let redirectUrl = `${origin}${next}`
+    if (!isLocalEnv && forwardedHost) {
+      redirectUrl = `https://${forwardedHost}${next}`
+    }
+
+    const response = NextResponse.redirect(redirectUrl)
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -18,29 +28,24 @@ export async function GET(request: Request) {
             return cookieStore.getAll()
           },
           setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
+            cookiesToSet.forEach(({ name, value, options }) => {
+              try {
                 cookieStore.set(name, value, options)
-              )
-            } catch {
-              // Called from Route Handler where headers might be locked
-            }
+              } catch {
+                // Ignore if called from context where cookieStore is read-only
+              }
+              response.cookies.set(name, value, options)
+            })
           },
         },
       }
     )
+
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      const forwardedHost = request.headers.get('x-forwarded-host')
-      const isLocalEnv = process.env.NODE_ENV === 'development'
-      if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`)
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
-      } else {
-        return NextResponse.redirect(`${origin}${next}`)
-      }
+      return response
     }
+    console.error('Google OAuth exchange code error:', error)
   }
 
   return NextResponse.redirect(`${origin}/login?error=Google%20authentication%20failed.%20Please%20try%20again.`)
