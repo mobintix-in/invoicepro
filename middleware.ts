@@ -1,6 +1,30 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+function isStaleRefreshTokenError(error: unknown) {
+  if (!error || typeof error !== 'object') return false
+
+  const maybeError = error as {
+    code?: string
+    status?: number
+    message?: string
+  }
+
+  return (
+    (maybeError.code === 'refresh_token_not_found' ||
+      maybeError.message?.toLowerCase().includes('refresh token not found')) &&
+    maybeError.status === 400
+  )
+}
+
+function clearSupabaseSessionCookies(request: NextRequest, response: NextResponse) {
+  request.cookies.getAll().forEach(({ name }) => {
+    if (name.startsWith('sb-') || name.includes('supabase')) {
+      response.cookies.delete(name)
+    }
+  })
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -39,19 +63,28 @@ export async function middleware(request: NextRequest) {
     )
 
     // getUser() revalidates the JWT against Supabase's auth server — unlike a
-    // cookie-name check, a forged cookie cannot satisfy it.
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    isAuthenticated = !!user
+    // cookie-name check, a forged cookie cannot satisfy it. A stale or missing
+    // refresh token is a normal unauthenticated state, not an app-breaking error.
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      isAuthenticated = !!user
 
-    if (isAuthenticated) {
-      // Single round-trip: are they an admin, and is their subscription active?
-      const { data } = await supabase
-        .rpc('my_access')
-        .single<{ is_admin: boolean; is_active: boolean }>()
-      isAdmin = !!data?.is_admin
-      hasActiveSubscription = !!data?.is_active
+      if (isAuthenticated) {
+        // Single round-trip: are they an admin, and is their subscription active?
+        const { data } = await supabase
+          .rpc('my_access')
+          .single<{ is_admin: boolean; is_active: boolean }>()
+        isAdmin = !!data?.is_admin
+        hasActiveSubscription = !!data?.is_active
+      }
+    } catch (error) {
+      if (isStaleRefreshTokenError(error)) {
+        clearSupabaseSessionCookies(request, response)
+      } else {
+        console.error('Supabase auth middleware error:', error)
+      }
     }
   }
 

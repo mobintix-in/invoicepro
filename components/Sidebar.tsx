@@ -16,6 +16,7 @@ function Icon({ d }: { d: string }) {
 }
 
 const ICON = {
+  home: 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25',
   logo: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z',
   invoices: 'M8.25 6.75h12M8.25 12h12M8.25 17.25h12M3.75 6.75h.007v.008H3.75V6.75zM3.75 12h.007v.008H3.75V12zm0 5.25h.007v.008H3.75v-.008z',
   plus: 'M12 4.5v15m7.5-7.5h-15',
@@ -72,7 +73,7 @@ export default function Sidebar() {
   }
 
   const links = [
-    { name: 'Invoices', path: '/', icon: ICON.invoices },
+    { name: 'Home', path: '/', icon: ICON.home },
     { name: 'Clients', path: '/clients', icon: ICON.clients },
     { name: 'Inventory', path: '/inventory', icon: ICON.inventory },
     { name: 'Profile', path: '/profile', icon: ICON.user },
