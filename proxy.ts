@@ -17,9 +17,29 @@ function isStaleRefreshTokenError(error: unknown) {
   )
 }
 
+function isMissingSessionError(error: unknown) {
+  if (!error || typeof error !== 'object') return false
+
+  const maybeError = error as {
+    name?: string
+    status?: number
+    message?: string
+  }
+
+  return (
+    (maybeError.name === 'AuthSessionMissingError' ||
+      maybeError.message?.toLowerCase().includes('auth session missing')) &&
+    maybeError.status === 400
+  )
+}
+
+function isSupabaseSessionCookie(name: string) {
+  return name.startsWith('sb-') || name.includes('supabase')
+}
+
 function clearSupabaseSessionCookies(request: NextRequest, response: NextResponse) {
   request.cookies.getAll().forEach(({ name }) => {
-    if (name.startsWith('sb-') || name.includes('supabase')) {
+    if (isSupabaseSessionCookie(name)) {
       response.cookies.delete(name)
     }
   })
@@ -48,7 +68,11 @@ export async function proxy(request: NextRequest) {
   let isAdmin = false
   let hasActiveSubscription = false
 
-  if (hasSupabaseEnv) {
+  const hasSessionCookie = request.cookies
+    .getAll()
+    .some(({ name }) => isSupabaseSessionCookie(name))
+
+  if (hasSupabaseEnv && hasSessionCookie) {
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -83,7 +107,9 @@ export async function proxy(request: NextRequest) {
       } = await supabase.auth.getUser()
 
       if (error) {
-        if (isStaleRefreshTokenError(error)) {
+        if (isMissingSessionError(error)) {
+          // A signed-out or expired browser session is an expected state.
+        } else if (isStaleRefreshTokenError(error)) {
           clearSupabaseSessionCookies(request, response)
         } else {
           console.error('Supabase auth middleware error:', error)
@@ -100,7 +126,9 @@ export async function proxy(request: NextRequest) {
         hasActiveSubscription = !!data?.is_active
       }
     } catch (error) {
-      if (isStaleRefreshTokenError(error)) {
+      if (isMissingSessionError(error)) {
+        // A signed-out or expired browser session is an expected state.
+      } else if (isStaleRefreshTokenError(error)) {
         clearSupabaseSessionCookies(request, response)
       } else {
         console.error('Supabase auth middleware error:', error)

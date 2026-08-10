@@ -14,6 +14,27 @@ const inputCls =
 
 const labelCls = 'mb-1 block text-xs font-medium text-gray-600'
 
+function databaseErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object') {
+    const value = error as {
+      code?: unknown
+      message?: unknown
+      details?: unknown
+      hint?: unknown
+    }
+    return [
+      value.code ? `[${String(value.code)}]` : '',
+      value.message ? String(value.message) : '',
+      value.details ? String(value.details) : '',
+      value.hint ? `Hint: ${String(value.hint)}` : '',
+    ]
+      .filter(Boolean)
+      .join(' — ')
+  }
+  return String(error || 'Unknown database error')
+}
+
 const defaultParty: Party = { name: '', email: '', address: '', phone: '', gstin: '', stateName: '', stateCode: '' }
 
 interface Props {
@@ -56,6 +77,7 @@ export default function InvoiceForm({ mode, initialData }: Props) {
   const [savingClient, setSavingClient] = useState(false)
   const [quota, setQuota] = useState<InvoiceQuota | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const subtotal = roundMoney(lineItems.reduce((sum, item) => sum + item.amount, 0))
   const tax = roundMoney(
@@ -218,21 +240,22 @@ export default function InvoiceForm({ mode, initialData }: Props) {
       dispatchThrough,
       destination,
     }
+    setSaveError(null)
     try {
       if (mode === 'new') await createInvoice(invoice)
       else await updateInvoice(invoice)
       router.push(`/invoices/${invoice.id}`)
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error)
-      console.warn("Failed to save invoice:", msg)
-      if (msg === 'INVOICE_LIMIT_REACHED') {
+      const message = databaseErrorMessage(error)
+      console.warn('Failed to save invoice:', message)
+      if (message.includes('INVOICE_LIMIT_REACHED')) {
         alert("You've reached your plan's monthly invoice limit. Upgrade your plan to create more.")
         router.push('/subscribe')
-      } else if (msg === 'Not authenticated') {
-        alert("You must be logged in to save an invoice.")
+      } else if (message.includes('Not authenticated')) {
+        alert('You must be logged in to save an invoice.')
         router.push('/login')
       } else {
-        alert(`Error saving invoice: ${msg || "Unknown error"}`)
+        setSaveError(message)
       }
     }
   }
@@ -274,6 +297,13 @@ export default function InvoiceForm({ mode, initialData }: Props) {
       {loadError && (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {loadError}
+        </div>
+      )}
+
+      {saveError && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="font-semibold">Could not save the invoice</div>
+          <div className="mt-1 break-words">{saveError}</div>
         </div>
       )}
 
