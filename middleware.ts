@@ -106,9 +106,9 @@ export async function middleware(request: NextRequest) {
   }
   if (isMarketingPage) return response
 
-  // Paywall: without an active subscription, only the subscribe screen and the
+  // Paywall: without an active subscription, dashboard, subscribe screen and
   // account profile are reachable (admins also get the approval console).
-  const unpaidAllowed = pathname === '/subscribe' || pathname === '/profile'
+  const unpaidAllowed = pathname === '/' || pathname === '/subscribe' || pathname === '/profile'
   if (!hasActiveSubscription && !isAdmin && !unpaidAllowed) {
     return NextResponse.redirect(new URL('/subscribe', request.url))
   }
