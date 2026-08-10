@@ -28,6 +28,14 @@ function clearSupabaseSessionCookies(request: NextRequest, response: NextRespons
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // OAuth providers return here before a Supabase session exists. The callback
+  // route must exchange the authorization code and set the session cookies;
+  // sending this request through the normal auth gate redirects it to /welcome
+  // before that exchange can happen.
+  if (pathname === '/auth/callback') {
+    return NextResponse.next()
+  }
+
   // Keep a mutable response so Supabase can write refreshed session cookies onto it.
   let response = NextResponse.next({ request })
 
