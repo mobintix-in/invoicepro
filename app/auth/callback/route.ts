@@ -44,8 +44,29 @@ export async function GET(request: Request) {
       }
     )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
+      if (data?.user) {
+        const user = data.user
+        const fullName =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          ''
+        const phone = user.user_metadata?.phone || ''
+        const companyName = user.user_metadata?.company_name || ''
+
+        // Ensure user profile row exists in `public.profiles`
+        await supabase.from('profiles').upsert(
+          {
+            id: user.id,
+            email: user.email ?? '',
+            full_name: fullName,
+            phone: phone,
+            company_name: companyName,
+          },
+          { onConflict: 'id' }
+        )
+      }
       return response
     }
     console.error('Google OAuth exchange code error:', error)

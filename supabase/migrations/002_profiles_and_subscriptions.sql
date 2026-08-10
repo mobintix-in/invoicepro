@@ -129,7 +129,7 @@ begin
   insert into public.profiles (id, full_name, phone, company_name, email)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data ->> 'full_name', ''),
+    coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', ''),
     coalesce(new.raw_user_meta_data ->> 'phone', ''),
     coalesce(new.raw_user_meta_data ->> 'company_name', ''),
     coalesce(new.email, '')

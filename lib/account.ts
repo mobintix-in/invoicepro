@@ -100,15 +100,44 @@ const PROFILE_COLUMNS =
   'id, full_name, phone, company_name, email, created_at, address, gstin, state_name, state_code, pan, bank_account_name, bank_name, account_number, ifsc_code, bank_branch, jurisdiction'
 
 export async function getMyProfile(): Promise<Profile | null> {
-  const { data: userData } = await createClient().auth.getUser()
-  const uid = userData.user?.id
-  if (!uid) return null
-  const { data, error } = await createClient()
+  const supabase = createClient()
+  const { data: userData } = await supabase.auth.getUser()
+  const user = userData.user
+  if (!user) return null
+
+  let { data, error } = await supabase
     .from('profiles')
     .select(PROFILE_COLUMNS)
-    .eq('id', uid)
+    .eq('id', user.id)
     .maybeSingle()
-  if (error || !data) return null
+
+  if ((error || !data) && user) {
+    const fullName =
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      ''
+    const phone = user.user_metadata?.phone || ''
+    const companyName = user.user_metadata?.company_name || ''
+
+    const { data: createdData } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: user.id,
+          email: user.email ?? '',
+          full_name: fullName,
+          phone: phone,
+          company_name: companyName,
+        },
+        { onConflict: 'id' }
+      )
+      .select(PROFILE_COLUMNS)
+      .maybeSingle()
+
+    data = createdData
+  }
+
+  if (!data) return null
   const row = data as ProfileRow
   return {
     id: row.id,
