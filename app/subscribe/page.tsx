@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { getMySubscription, submitPayment } from '@/lib/account'
-import { SUBSCRIPTION, upiPaymentUri, type Subscription } from '@/lib/subscription'
+import { SUBSCRIPTION, upiPaymentUri, isSubscriptionActive, type Subscription } from '@/lib/subscription'
 import { listActivePackages } from '@/lib/packages-admin'
 import { type Package } from '@/lib/packages'
 
@@ -27,22 +27,29 @@ export default function SubscribePage() {
   const [error, setError] = useState<string | null>(null)
 
   async function refresh() {
-    setSub(await getMySubscription())
-    setLoading(false)
+    try {
+      setSub(await getMySubscription())
+    } catch {
+      setError('Could not refresh your subscription status. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
-    getMySubscription().then((s) => {
-      setSub(s)
-      setLoading(false)
-    })
-    listActivePackages().then((pkgs) => {
-      setPackages(pkgs)
-      // Default to the highlighted plan, else the first one.
-      const preferred = pkgs.find((p) => p.highlighted) ?? pkgs[0]
-      if (preferred) setSelectedKey(preferred.key)
-    })
+    Promise.all([getMySubscription(), listActivePackages()])
+      .then(([subscription, availablePackages]) => {
+        setSub(subscription)
+        setPackages(availablePackages)
+        const preferred =
+          availablePackages.find((plan) => plan.highlighted) ??
+          availablePackages[0]
+        if (preferred) setSelectedKey(preferred.key)
+        else setError('No subscription plans are currently available.')
+      })
+      .catch(() => setError('Could not load subscription details. Please try again.'))
+      .finally(() => setLoading(false))
   }, [])
 
   const selectedPackage = packages.find((p) => p.key === selectedKey) ?? null
@@ -54,17 +61,23 @@ export default function SubscribePage() {
       setError('Please enter the UPI transaction / UTR reference from your payment.')
       return
     }
+    if (!selectedPackage) {
+      setError('Please choose an available subscription plan.')
+      return
+    }
     setError(null)
     setSubmitting(true)
     try {
-      await submitPayment(
-        utr,
-        selectedPackage ? { key: selectedPackage.key, priceInr: selectedPackage.priceInr } : undefined,
-      )
+      await submitPayment(utr, selectedPackage.key)
       setUtr('')
       await refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not submit. Please try again.')
+      const message = err instanceof Error ? err.message : ''
+      setError(
+        message.includes('SUBSCRIPTION_NOT_RENEWABLE')
+          ? 'This subscription cannot be resubmitted while it is pending or active.'
+          : 'Could not submit the payment. Please verify the reference and try again.',
+      )
     } finally {
       setSubmitting(false)
     }
@@ -76,7 +89,10 @@ export default function SubscribePage() {
     router.refresh()
   }
 
-  const status = sub?.status ?? 'none'
+  const status =
+    sub?.status === 'active' && !isSubscriptionActive(sub)
+      ? 'expired'
+      : (sub?.status ?? 'none')
   const canPay = status === 'none' || status === 'rejected' || status === 'expired'
 
   return (
@@ -286,7 +302,7 @@ function PayFlow({
         )}
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !selectedKey}
           className="flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
         >
           {submitting ? 'Submitting…' : 'Submit payment for verification'}

@@ -34,6 +34,7 @@ export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([])
   const [editing, setEditing] = useState<InventoryItemInput | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [pageError, setPageError] = useState<string | null>(null)
 
   async function refresh() {
     setItems(await listInventory())
@@ -41,10 +42,10 @@ export default function InventoryPage() {
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
-    listInventory().then((rows) => {
-      setItems(rows)
-      setLoading(false)
-    })
+    listInventory()
+      .then(setItems)
+      .catch(() => setPageError('Could not load inventory. Please try again.'))
+      .finally(() => setLoading(false))
   }, [])
 
   async function handleDelete(item: InventoryItem) {
@@ -119,6 +120,12 @@ export default function InventoryPage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Stock value</p>
             <p className="mt-1 text-2xl font-bold text-gray-900">{formatCurrency(stockValue)}</p>
           </div>
+        </div>
+      )}
+
+      {pageError && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {pageError}
         </div>
       )}
 
@@ -242,8 +249,8 @@ export default function InventoryPage() {
           initial={editing}
           onClose={() => setEditing(null)}
           onSaved={async () => {
-            setEditing(null)
             await refresh()
+            setEditing(null)
           }}
         />
       )}
@@ -258,7 +265,7 @@ function ItemModal({
 }: {
   initial: InventoryItemInput
   onClose: () => void
-  onSaved: () => void
+  onSaved: () => Promise<void>
 }) {
   const [form, setForm] = useState<InventoryItemInput>(initial)
   const [saving, setSaving] = useState(false)
@@ -283,7 +290,7 @@ function ItemModal({
     setSaving(true)
     try {
       await saveInventoryItem(form)
-      onSaved()
+      await onSaved()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save item')
     } finally {

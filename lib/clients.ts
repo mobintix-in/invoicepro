@@ -65,8 +65,8 @@ export async function listClients(): Promise<Client[]> {
     .from('clients')
     .select('*')
     .order('name', { ascending: true })
-  if (error || !data) return []
-  return (data as ClientRow[]).map(fromRow)
+  if (error) throw error
+  return (data as ClientRow[] | null)?.map(fromRow) ?? []
 }
 
 export async function saveClient(input: ClientInput): Promise<void> {

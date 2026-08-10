@@ -21,6 +21,7 @@ export default function InvoicePreview({ id }: { id: string }) {
   const router = useRouter()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [missing, setMissing] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     getInvoice(id)
@@ -31,14 +32,20 @@ export default function InvoicePreview({ id }: { id: string }) {
         }
         setInvoice(inv)
       })
-      .catch(err => {
-        console.warn(err?.message || 'Failed to load invoice')
-        setMissing(true)
+      .catch(() => {
+        setLoadError('Could not load this invoice. Please check your connection and try again.')
       })
   }, [id])
 
-  // Data API failed or the invoice doesn't exist → render the 404 page.
   if (missing) notFound()
+
+  if (loadError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-6 text-sm text-red-700">
+        {loadError}
+      </div>
+    )
+  }
 
   if (!invoice) {
     return (

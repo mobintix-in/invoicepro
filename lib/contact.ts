@@ -27,13 +27,17 @@ export async function submitContactMessage(input: {
   email: string
   message: string
 }): Promise<void> {
-  // No .select() — anonymous visitors can insert but not read back (by design).
-  const { error } = await createClient().from('contact_messages').insert({
-    name: input.name.trim().slice(0, 200),
-    email: input.email.trim().slice(0, 200),
-    message: input.message.trim().slice(0, 5000),
+  const { error } = await createClient().rpc('submit_contact_message', {
+    p_name: input.name.trim().slice(0, 200),
+    p_email: input.email.trim().slice(0, 200),
+    p_message: input.message.trim().slice(0, 5000),
   })
-  if (error) throw error
+  if (error) {
+    if (error.message.includes('CONTACT_RATE_LIMITED')) {
+      throw new Error('Too many messages. Please wait a few minutes and try again.')
+    }
+    throw error
+  }
 }
 
 /** Every message, newest first — admins only, via RLS. */

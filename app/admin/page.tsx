@@ -42,6 +42,17 @@ function StatusPill({ status }: { status: UserRow['status'] }) {
   )
 }
 
+function actionErrorMessage(error: unknown): string {
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String(error.message)
+    if (message.includes('permission denied') || message.includes('42501')) {
+      return 'Activation is blocked by database permissions. Apply the latest Supabase migration.'
+    }
+    return message
+  }
+  return 'Subscription action failed. Please try again.'
+}
+
 export default function AdminPage() {
   const router = useRouter()
   const [checking, setChecking] = useState(isSupabaseConfigured())
@@ -49,6 +60,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserRow[]>([])
   const [busyId, setBusyId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setUsers(await listAllUsers())
@@ -56,26 +68,29 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
-    getMyAccess().then(async ({ isAdmin }) => {
-      if (!isAdmin) {
-        router.replace('/')
-        return
-      }
-      setIsAdmin(true)
-      await load()
-      setChecking(false)
-    })
+    getMyAccess()
+      .then(async ({ isAdmin }) => {
+        if (!isAdmin) {
+          router.replace('/')
+          return
+        }
+        setIsAdmin(true)
+        await load()
+      })
+      .catch((error) => setActionError(actionErrorMessage(error)))
+      .finally(() => setChecking(false))
   }, [router, load])
 
   async function act(userId: string, action: 'grant' | 'reject' | 'revoke') {
     setBusyId(userId)
+    setActionError(null)
     try {
       if (action === 'grant') await grantSubscription(userId)
       else if (action === 'reject') await rejectSubscription(userId)
       else await revokeSubscription(userId)
       await load()
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Action failed')
+    } catch (error) {
+      setActionError(actionErrorMessage(error))
     } finally {
       setBusyId(null)
     }
@@ -120,13 +135,22 @@ export default function AdminPage() {
             className="w-56 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
           />
           <button
-            onClick={load}
+            onClick={() => {
+              setActionError(null)
+              load().catch((error) => setActionError(actionErrorMessage(error)))
+            }}
             className="rounded-lg border border-gray-300 px-3.5 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
           >
             Refresh
           </button>
         </div>
       </div>
+
+      {actionError && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {actionError}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center text-sm text-gray-500">
@@ -183,7 +207,7 @@ export default function AdminPage() {
                             disabled={busyId === u.userId}
                             className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
                           >
-                            Approve
+                            {busyId === u.userId ? 'Approving…' : 'Approve'}
                           </button>
                           <button
                             onClick={() => act(u.userId, 'reject')}
@@ -199,7 +223,7 @@ export default function AdminPage() {
                           disabled={busyId === u.userId}
                           className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
                         >
-                          Revoke
+                          {busyId === u.userId ? 'Revoking…' : 'Revoke'}
                         </button>
                       ) : (
                         <button
@@ -207,7 +231,7 @@ export default function AdminPage() {
                           disabled={busyId === u.userId}
                           className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
                         >
-                          Activate
+                          {busyId === u.userId ? 'Activating…' : 'Activate'}
                         </button>
                       )}
                     </div>

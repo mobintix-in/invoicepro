@@ -25,7 +25,7 @@ function clearSupabaseSessionCookies(request: NextRequest, response: NextRespons
   })
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // OAuth providers return here before a Supabase session exists. The callback
@@ -57,13 +57,16 @@ export async function middleware(request: NextRequest) {
           getAll() {
             return request.cookies.getAll()
           },
-          setAll(cookiesToSet) {
+          setAll(cookiesToSet, headersToSet) {
             cookiesToSet.forEach(({ name, value }) =>
               request.cookies.set(name, value)
             )
             response = NextResponse.next({ request })
             cookiesToSet.forEach(({ name, value, options }) =>
               response.cookies.set(name, value, options)
+            )
+            Object.entries(headersToSet).forEach(([name, value]) =>
+              response.headers.set(name, value)
             )
           },
         },
@@ -76,14 +79,23 @@ export async function middleware(request: NextRequest) {
     try {
       const {
         data: { user },
+        error,
       } = await supabase.auth.getUser()
-      isAuthenticated = !!user
 
-      if (isAuthenticated) {
+      if (error) {
+        if (isStaleRefreshTokenError(error)) {
+          clearSupabaseSessionCookies(request, response)
+        } else {
+          console.error('Supabase auth middleware error:', error)
+        }
+      } else if (user) {
+        isAuthenticated = true
+
         // Single round-trip: are they an admin, and is their subscription active?
-        const { data } = await supabase
+        const { data, error: accessError } = await supabase
           .rpc('my_access')
           .single<{ is_admin: boolean; is_active: boolean }>()
+        if (accessError) console.error('Supabase access check failed:', accessError)
         isAdmin = !!data?.is_admin
         hasActiveSubscription = !!data?.is_active
       }

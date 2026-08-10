@@ -1,3 +1,6 @@
-insert into public.admins (user_id)
-select id from auth.users where email = 'aryanbhimani0011@gmail.com'
-on conflict do nothing;
+-- Admin membership is environment-specific and must not be hard-coded.
+-- After the intended account has signed up, grant it explicitly:
+--
+-- insert into public.admins (user_id)
+-- select id from auth.users where email = 'owner@example.com'
+-- on conflict do nothing;

@@ -35,8 +35,10 @@ export default function ContactForm() {
       setName('')
       setEmail('')
       setMessage('')
-    } catch {
-      setError('Sorry, we couldn’t send your message. Please try again.')
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Sorry, we couldn’t send your message. Please try again.',
+      )
     } finally {
       setSubmitting(false)
     }

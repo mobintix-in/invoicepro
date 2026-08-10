@@ -26,8 +26,8 @@ export async function listActivePackages(): Promise<Package[]> {
     .select(PACKAGE_COLUMNS)
     .eq('active', true)
     .order('sort_order', { ascending: true })
-  if (error || !data) return []
-  return (data as PackageRow[]).map(rowToPackage)
+  if (error) throw error
+  return (data as PackageRow[] | null)?.map(rowToPackage) ?? []
 }
 
 /** Every package, inactive included — admins only, via RLS. */

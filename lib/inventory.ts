@@ -78,8 +78,8 @@ export async function listInventory(): Promise<InventoryItem[]> {
     .from('inventory_items')
     .select('*')
     .order('name', { ascending: true })
-  if (error || !data) return []
-  return (data as InventoryRow[]).map(fromRow)
+  if (error) throw error
+  return (data as InventoryRow[] | null)?.map(fromRow) ?? []
 }
 
 export async function saveInventoryItem(input: InventoryItemInput): Promise<void> {
@@ -111,21 +111,14 @@ export async function saveInventoryItem(input: InventoryItemInput): Promise<void
  * -1 to record a sale). Never drops below zero. Returns the new quantity.
  */
 export async function adjustStock(id: string, delta: number): Promise<number> {
-  const supabase = createClient()
-  const { data, error } = await supabase
-    .from('inventory_items')
-    .select('quantity')
-    .eq('id', id)
-    .single<{ quantity: number }>()
-  if (error || !data) throw error ?? new Error('Item not found')
-
-  const next = Math.max(0, (Number(data.quantity) || 0) + delta)
-  const { error: updateError } = await supabase
-    .from('inventory_items')
-    .update({ quantity: next, updated_at: new Date().toISOString() })
-    .eq('id', id)
-  if (updateError) throw updateError
-  return next
+  const { data, error } = await createClient().rpc('adjust_inventory_stock', {
+    p_id: id,
+    p_delta: delta,
+  })
+  if (error) throw error
+  const quantity = Number(data)
+  if (!Number.isFinite(quantity)) throw new Error('Could not update stock')
+  return quantity
 }
 
 export async function deleteInventoryItem(id: string): Promise<void> {

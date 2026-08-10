@@ -13,11 +13,12 @@ export default function InvoiceList() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [filter, setFilter] = useState<Filter>('all')
   const [mounted, setMounted] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     getInvoices()
       .then(setInvoices)
-      .catch(err => console.warn(err.message || 'Failed to load invoices'))
+      .catch(() => setLoadError('Could not load invoices. Please check your connection and try again.'))
       .finally(() => setMounted(true))
   }, [])
 
@@ -25,6 +26,14 @@ export default function InvoiceList() {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-6 text-sm text-red-700">
+        {loadError}
       </div>
     )
   }

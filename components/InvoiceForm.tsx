@@ -7,7 +7,7 @@ import { createInvoice, updateInvoice, nextInvoiceNumber, getInvoiceQuota, type 
 import { getMyProfile } from '@/lib/account'
 import { listClients, saveClient, type Client } from '@/lib/clients'
 import { parseGstin, lookupGstin } from '@/lib/gstin'
-import { generateId, today, daysFromNow, formatCurrency } from '@/lib/utils'
+import { generateId, today, daysFromNow, formatCurrency, roundMoney } from '@/lib/utils'
 
 const inputCls =
   'block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'
@@ -35,7 +35,7 @@ export default function InvoiceForm({ mode, initialData }: Props) {
   const [to, setTo] = useState<Party>(() => initialData?.to ?? defaultParty)
   const [lineItems, setLineItems] = useState<LineItem[]>(() =>
     initialData?.lineItems ?? [
-      { id: generateId(), description: '', quantity: 1, rate: 0, amount: 0, hsnCode: '', unit: 'Units', gstRate: 0 },
+      { id: generateId(), description: '', quantity: 1, rate: 0, amount: 0, hsnCode: '', unit: 'Units' },
     ],
   )
   const [notes, setNotes] = useState(() => initialData?.notes ?? '')
@@ -55,14 +55,22 @@ export default function InvoiceForm({ mode, initialData }: Props) {
   const [clients, setClients] = useState<Client[]>([])
   const [savingClient, setSavingClient] = useState(false)
   const [quota, setQuota] = useState<InvoiceQuota | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  const subtotal = lineItems.reduce((s, item) => s + item.amount, 0)
-  const tax = subtotal * (taxRate / 100)
-  const total = subtotal + tax
+  const subtotal = roundMoney(lineItems.reduce((sum, item) => sum + item.amount, 0))
+  const tax = roundMoney(
+    lineItems.reduce(
+      (sum, item) => sum + roundMoney(item.amount * ((item.gstRate ?? taxRate) / 100)),
+      0,
+    ),
+  )
+  const total = roundMoney(subtotal + tax)
 
   // Saved clients power the "Bill To" quick-picker.
   useEffect(() => {
-    listClients().then(setClients).catch(() => {})
+    listClients()
+      .then(setClients)
+      .catch(() => setLoadError('Could not load your saved clients.'))
   }, [])
 
   // Fill every "Bill To" field from a saved client in one click.
@@ -111,10 +119,12 @@ export default function InvoiceForm({ mode, initialData }: Props) {
 
     nextInvoiceNumber()
       .then(setInvoiceNumber)
-      .catch((err) => console.warn(err.message || 'Failed to generate number'))
+      .catch(() => setLoadError('Could not allocate an invoice number. Please reload before saving.'))
 
     // Surface the plan's monthly invoice allowance up front.
-    getInvoiceQuota().then(setQuota).catch(() => {})
+    getInvoiceQuota()
+      .then(setQuota)
+      .catch(() => setLoadError('Could not verify your invoice allowance. Please reload before saving.'))
 
     // Pre-fill the seller ("From") side and bank block from the saved profile.
     getMyProfile()
@@ -137,7 +147,7 @@ export default function InvoiceForm({ mode, initialData }: Props) {
         setBankBranch(p.bankBranch)
         setJurisdiction(p.jurisdiction)
       })
-      .catch(() => {})
+      .catch(() => setLoadError('Could not load your saved business profile.'))
   }, [mode])
 
   function updateLineItem(
@@ -149,10 +159,15 @@ export default function InvoiceForm({ mode, initialData }: Props) {
       prev.map(item => {
         if (item.id !== id) return item
         const numericFields: (keyof LineItem)[] = ['quantity', 'rate', 'gstRate']
-        const value = numericFields.includes(field) ? parseFloat(rawValue) || 0 : rawValue
-        const updated = { ...item, [field]: value }
+        const value =
+          field === 'gstRate' && rawValue === ''
+            ? undefined
+            : numericFields.includes(field)
+              ? Math.max(0, parseFloat(rawValue) || 0)
+              : rawValue
+        const updated: LineItem = { ...item, [field]: value }
         if (field === 'quantity' || field === 'rate') {
-          updated.amount = Number(updated.quantity) * Number(updated.rate)
+          updated.amount = roundMoney(Number(updated.quantity) * Number(updated.rate))
         }
         return updated
       }),
@@ -162,7 +177,7 @@ export default function InvoiceForm({ mode, initialData }: Props) {
   function addLineItem() {
     setLineItems(prev => [
       ...prev,
-      { id: generateId(), description: '', quantity: 1, rate: 0, amount: 0, hsnCode: '', unit: 'Units', gstRate: taxRate },
+      { id: generateId(), description: '', quantity: 1, rate: 0, amount: 0, hsnCode: '', unit: 'Units' },
     ])
   }
 
@@ -255,6 +270,12 @@ export default function InvoiceForm({ mode, initialData }: Props) {
           </button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {loadError}
+        </div>
+      )}
 
       {mode === 'new' && quota && quota.limit !== null && (
         <div
@@ -566,6 +587,40 @@ export default function InvoiceForm({ mode, initialData }: Props) {
                   placeholder="Description"
                   className={`${inputCls} mb-2`}
                 />
+                <div className="mb-2 grid grid-cols-3 gap-2">
+                  <div>
+                    <label className={labelCls}>HSN/SAC</label>
+                    <input
+                      type="text"
+                      value={item.hsnCode || ''}
+                      onChange={e => updateLineItem(item.id, 'hsnCode', e.target.value)}
+                      placeholder="6901"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>GST %</label>
+                    <input
+                      type="number"
+                      value={item.gstRate ?? ''}
+                      onChange={e => updateLineItem(item.id, 'gstRate', e.target.value)}
+                      min="0"
+                      max="100"
+                      placeholder={String(taxRate)}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Unit</label>
+                    <input
+                      type="text"
+                      value={item.unit || ''}
+                      onChange={e => updateLineItem(item.id, 'unit', e.target.value)}
+                      placeholder="Units"
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className={labelCls}>Qty</label>
@@ -646,7 +701,7 @@ export default function InvoiceForm({ mode, initialData }: Props) {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <label className="flex items-center gap-2 text-gray-600">
-                  Tax (%)
+                  Default GST (%)
                   <input
                     type="number"
                     value={taxRate}

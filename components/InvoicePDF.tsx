@@ -2,7 +2,7 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import type { Invoice } from '@/types'
-import { amountToWords } from '@/lib/utils'
+import { amountToWords, roundMoney } from '@/lib/utils'
 
 const BW = 0.5
 const BC = '#000'
@@ -25,10 +25,6 @@ const s = StyleSheet.create({
   mt4: { marginTop: 4 },
 })
 
-function cell(extra: object = {}) {
-  return [s.b, s.p2, extra]
-}
-
 function numFmt(n: number) {
   return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
@@ -46,12 +42,16 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
   const igst = gstType === 'igst' ? invoice.tax : 0
 
   // Per-line totals for HSN summary
-  const hsnMap: Record<string, { taxable: number; rate: number }> = {}
+  const hsnMap: Record<string, { code: string; taxable: number; rate: number; tax: number }> = {}
   for (const item of invoice.lineItems) {
     const code = item.hsnCode || 'N/A'
     const rate = item.gstRate ?? invoice.taxRate ?? 0
-    if (!hsnMap[code]) hsnMap[code] = { taxable: 0, rate }
-    hsnMap[code].taxable += item.amount
+    const key = `${code}|${rate}`
+    if (!hsnMap[key]) hsnMap[key] = { code, taxable: 0, rate, tax: 0 }
+    hsnMap[key].taxable = roundMoney(hsnMap[key].taxable + item.amount)
+    hsnMap[key].tax = roundMoney(
+      hsnMap[key].tax + roundMoney(item.amount * (rate / 100)),
+    )
   }
   const hsnRows = Object.entries(hsnMap)
 
@@ -239,11 +239,10 @@ export function InvoicePDFDocument({ invoice }: { invoice: Invoice }) {
           <Text style={[s.bold, s.center, s.p2, { width: 60 }]}>Total Tax{'\n'}Amount</Text>
         </View>
 
-        {hsnRows.map(([code, { taxable, rate }]) => {
-          const itemTax = taxable * (rate / 100)
-          const half = itemTax / 2
+        {hsnRows.map(([key, { code, taxable, rate, tax: itemTax }]) => {
+          const half = roundMoney(itemTax / 2)
           return (
-            <View key={code} style={[s.row, s.bl, s.br, s.bb]}>
+            <View key={key} style={[s.row, s.bl, s.br, s.bb]}>
               <Text style={[s.center, s.p2, s.br, { width: 50 }]}>{code}</Text>
               <Text style={[s.right, s.p2, s.br, { flex: 1 }]}>{numFmt(taxable)}</Text>
               {gstType === 'cgst_sgst' ? [

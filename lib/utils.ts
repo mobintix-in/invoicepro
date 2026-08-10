@@ -22,9 +22,14 @@ function toWords(num: number): string {
   return result.trim()
 }
 
+export function roundMoney(amount: number): number {
+  return Math.round((amount + Number.EPSILON) * 100) / 100
+}
+
 export function amountToWords(amount: number): string {
-  const whole = Math.floor(amount)
-  const paise = Math.round((amount - whole) * 100)
+  const totalPaise = Math.max(0, Math.round(amount * 100))
+  const whole = Math.floor(totalPaise / 100)
+  const paise = totalPaise % 100
   let result = 'Indian Rupees ' + toWords(whole)
   if (paise > 0) result += ' and ' + toWords(paise) + ' Paise'
   return result + ' Only'
@@ -50,12 +55,19 @@ export function generateId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 }
 
+function localDateString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function today(): string {
-  return new Date().toISOString().split('T')[0]
+  return localDateString(new Date())
 }
 
 export function daysFromNow(days: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() + days)
-  return d.toISOString().split('T')[0]
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return localDateString(date)
 }

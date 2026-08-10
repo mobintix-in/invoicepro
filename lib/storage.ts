@@ -19,6 +19,22 @@ type DbRow = {
   created_at: string
   updated_at: string
   template: string
+  seller_pan: string
+  bank_account_name: string
+  bank_name: string
+  account_number: string
+  ifsc_code: string
+  bank_branch: string
+  jurisdiction: string
+  gst_type: string
+  delivery_note: string
+  buyer_order_no: string
+  dispatch_through: string
+  destination: string
+}
+
+function optional(value: string): string | undefined {
+  return value || undefined
 }
 
 function fromDb(row: DbRow): Invoice {
@@ -39,19 +55,24 @@ function fromDb(row: DbRow): Invoice {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     template: row.template ?? 'classic',
+    sellerPan: optional(row.seller_pan),
+    bankAccountName: optional(row.bank_account_name),
+    bankName: optional(row.bank_name),
+    accountNumber: optional(row.account_number),
+    ifscCode: optional(row.ifsc_code),
+    bankBranch: optional(row.bank_branch),
+    jurisdiction: optional(row.jurisdiction),
+    gstType: row.gst_type === 'igst' ? 'igst' : 'cgst_sgst',
+    deliveryNote: optional(row.delivery_note),
+    buyerOrderNo: optional(row.buyer_order_no),
+    dispatchThrough: optional(row.dispatch_through),
+    destination: optional(row.destination),
   }
 }
 
 async function getUserId(): Promise<string> {
   const { data, error } = await createClient().auth.getUser()
-  if (error) {
-    console.warn('Supabase auth error:', error.message)
-    throw new Error('Not authenticated')
-  }
-  if (!data.user) {
-    console.warn('No user found in session')
-    throw new Error('Not authenticated')
-  }
+  if (error || !data.user) throw new Error('Not authenticated')
   return data.user.id
 }
 
@@ -60,10 +81,7 @@ export async function getInvoices(): Promise<Invoice[]> {
     .from('invoices')
     .select('*')
     .order('created_at', { ascending: false })
-  if (error) {
-    console.warn('Failed to fetch invoices:', error.message || error)
-    return []
-  }
+  if (error) throw error
   return (data as DbRow[]).map(fromDb)
 }
 
@@ -72,15 +90,13 @@ export async function getInvoice(id: string): Promise<Invoice | undefined> {
     .from('invoices')
     .select('*')
     .eq('id', id)
-    .single()
-  if (error) return undefined
-  return fromDb(data as DbRow)
+    .maybeSingle()
+  if (error) throw error
+  return data ? fromDb(data as DbRow) : undefined
 }
 
-function toRow(invoice: Invoice, userId: string) {
+function invoiceValues(invoice: Invoice) {
   return {
-    id: invoice.id,
-    user_id: userId,
     invoice_number: invoice.invoiceNumber,
     status: invoice.status,
     issue_date: invoice.issueDate,
@@ -93,52 +109,63 @@ function toRow(invoice: Invoice, userId: string) {
     subtotal: invoice.subtotal,
     tax: invoice.tax,
     total: invoice.total,
-    created_at: invoice.createdAt,
-    updated_at: invoice.updatedAt,
     template: invoice.template ?? 'classic',
+    seller_pan: invoice.sellerPan ?? '',
+    bank_account_name: invoice.bankAccountName ?? '',
+    bank_name: invoice.bankName ?? '',
+    account_number: invoice.accountNumber ?? '',
+    ifsc_code: invoice.ifscCode ?? '',
+    bank_branch: invoice.bankBranch ?? '',
+    jurisdiction: invoice.jurisdiction ?? '',
+    gst_type: invoice.gstType ?? 'cgst_sgst',
+    delivery_note: invoice.deliveryNote ?? '',
+    buyer_order_no: invoice.buyerOrderNo ?? '',
+    dispatch_through: invoice.dispatchThrough ?? '',
+    destination: invoice.destination ?? '',
   }
 }
 
-/**
- * Insert a brand-new invoice. This is the only path subject to the monthly plan
- * quota — the DB's BEFORE INSERT trigger raises INVOICE_LIMIT_REACHED when the
- * plan's cap is hit, which we normalise for the UI to detect.
- */
 export async function createInvoice(invoice: Invoice): Promise<void> {
   const userId = await getUserId()
-  const { error } = await createClient().from('invoices').insert(toRow(invoice, userId))
+  const { error } = await createClient().from('invoices').insert({
+    id: invoice.id,
+    user_id: userId,
+    ...invoiceValues(invoice),
+  })
   if (error) {
-    if (/INVOICE_LIMIT_REACHED/i.test(error.message)) throw new Error('INVOICE_LIMIT_REACHED')
+    if (/INVOICE_LIMIT_REACHED/i.test(error.message)) {
+      throw new Error('INVOICE_LIMIT_REACHED')
+    }
+    if (/ACTIVE_PLAN_REQUIRED/i.test(error.message)) {
+      throw new Error('ACTIVE_PLAN_REQUIRED')
+    }
     throw error
   }
 }
 
-/** Update an existing invoice (edits and status changes). Not quota-limited. */
 export async function updateInvoice(invoice: Invoice): Promise<void> {
   const userId = await getUserId()
   const { error } = await createClient()
     .from('invoices')
-    .update(toRow(invoice, userId))
+    .update(invoiceValues(invoice))
     .eq('id', invoice.id)
+    .eq('user_id', userId)
   if (error) throw error
 }
 
 export interface InvoiceQuota {
-  limit: number | null // null = unlimited
+  limit: number | null
   used: number
   remaining: number | null
   reached: boolean
 }
 
-/**
- * The current user's monthly invoice allowance and usage, via the
- * my_invoice_quota() RPC. Degrades to unlimited if the RPC/migration is absent.
- */
 export async function getInvoiceQuota(): Promise<InvoiceQuota> {
   const { data, error } = await createClient()
     .rpc('my_invoice_quota')
     .single<{ invoice_limit: number | null; used: number }>()
-  if (error || !data) return { limit: null, used: 0, remaining: null, reached: false }
+  if (error) throw error
+  if (!data) throw new Error('Invoice quota is unavailable')
   const limit = data.invoice_limit === null ? null : Number(data.invoice_limit)
   const used = Number(data.used) || 0
   const remaining = limit === null ? null : Math.max(0, limit - used)
@@ -146,18 +173,15 @@ export async function getInvoiceQuota(): Promise<InvoiceQuota> {
 }
 
 export async function deleteInvoice(id: string): Promise<void> {
-  const { error } = await createClient()
-    .from('invoices')
-    .delete()
-    .eq('id', id)
+  const { error } = await createClient().from('invoices').delete().eq('id', id)
   if (error) throw error
 }
 
 export async function nextInvoiceNumber(): Promise<string> {
-  const invoices = await getInvoices()
-  const nums = invoices
-    .map(inv => parseInt(inv.invoiceNumber.replace(/\D/g, ''), 10))
-    .filter(n => !isNaN(n) && n > 0)
-  const max = nums.length > 0 ? Math.max(...nums) : 0
-  return `INV-${String(max + 1).padStart(4, '0')}`
+  const { data, error } = await createClient().rpc('next_invoice_number')
+  if (error) throw error
+  if (typeof data !== 'string' || !data) {
+    throw new Error('Could not allocate an invoice number')
+  }
+  return data
 }

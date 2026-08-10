@@ -23,6 +23,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [editing, setEditing] = useState<ClientInput | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [pageError, setPageError] = useState<string | null>(null)
 
   async function refresh() {
     setClients(await listClients())
@@ -30,10 +31,10 @@ export default function ClientsPage() {
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
-    listClients().then((cs) => {
-      setClients(cs)
-      setLoading(false)
-    })
+    listClients()
+      .then(setClients)
+      .catch(() => setPageError('Could not load clients. Please try again.'))
+      .finally(() => setLoading(false))
   }, [])
 
   async function handleDelete(client: Client) {
@@ -76,6 +77,12 @@ export default function ClientsPage() {
           Add Client
         </button>
       </div>
+
+      {pageError && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {pageError}
+        </div>
+      )}
 
       {clients.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center">
@@ -158,8 +165,8 @@ export default function ClientsPage() {
           initial={editing}
           onClose={() => setEditing(null)}
           onSaved={async () => {
-            setEditing(null)
             await refresh()
+            setEditing(null)
           }}
         />
       )}
@@ -174,7 +181,7 @@ function ClientModal({
 }: {
   initial: ClientInput
   onClose: () => void
-  onSaved: () => void
+  onSaved: () => Promise<void>
 }) {
   const [form, setForm] = useState<ClientInput>(initial)
   const [saving, setSaving] = useState(false)
@@ -194,7 +201,7 @@ function ClientModal({
     setSaving(true)
     try {
       await saveClient(form)
-      onSaved()
+      await onSaved()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save client')
     } finally {

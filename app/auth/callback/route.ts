@@ -2,77 +2,93 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
+function publicBaseUrl(requestOrigin: string): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+  if (!configured) return requestOrigin
+
+  try {
+    return new URL(configured).origin
+  } catch {
+    console.error('NEXT_PUBLIC_SITE_URL is not a valid absolute URL')
+    return requestOrigin
+  }
+}
+
+function safeNextPath(value: string | null): string {
+  return value?.startsWith('/') && !value.startsWith('//') ? value : '/'
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  const next = safeNextPath(searchParams.get('next'))
+  const publicBase = publicBaseUrl(origin)
+  const loginError =
+    '/login?error=Google%20authentication%20failed.%20Please%20try%20again.'
 
-  const forwardedHost = request.headers.get('x-forwarded-host')
-  const isLocalEnv = process.env.NODE_ENV === 'development'
-
-  // Derive the public base URL consistently for both success and error redirects.
-  // On hosted environments the raw `origin` can be an internal address; prefer
-  // the x-forwarded-host header (set by the reverse proxy) when available.
-  const publicBase =
-    !isLocalEnv && forwardedHost ? `https://${forwardedHost}` : origin
-
-  if (code) {
-    const cookieStore = await cookies()
-
-    const redirectUrl = `${publicBase}${next}`
-    const response = NextResponse.redirect(redirectUrl)
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              try {
-                cookieStore.set(name, value, options)
-              } catch {
-                // Ignore if called from context where cookieStore is read-only
-              }
-              response.cookies.set(name, value, options)
-            })
-          },
-        },
-      }
-    )
-
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      if (data?.user) {
-        const user = data.user
-        const fullName =
-          user.user_metadata?.full_name ||
-          user.user_metadata?.name ||
-          ''
-        const phone = user.user_metadata?.phone || ''
-        const companyName = user.user_metadata?.company_name || ''
-
-        // Ensure user profile row exists in `public.profiles`
-        await supabase.from('profiles').upsert(
-          {
-            id: user.id,
-            email: user.email ?? '',
-            full_name: fullName,
-            phone: phone,
-            company_name: companyName,
-          },
-          { onConflict: 'id' }
-        )
-      }
-      return response
-    }
-    console.error('Google OAuth exchange code error:', error)
+  if (!code) {
+    return NextResponse.redirect(`${publicBase}${loginError}`)
   }
 
-  return NextResponse.redirect(
-    `${publicBase}/login?error=Google%20authentication%20failed.%20Please%20try%20again.`
+  const cookieStore = await cookies()
+  const response = NextResponse.redirect(`${publicBase}${next}`)
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet, headersToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            try {
+              cookieStore.set(name, value, options)
+            } catch {
+              // The response below remains the authoritative cookie writer.
+            }
+            response.cookies.set(name, value, options)
+          })
+          Object.entries(headersToSet).forEach(([name, value]) =>
+            response.headers.set(name, value)
+          )
+        },
+      },
+    }
   )
+
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+  if (error) {
+    console.error('Google OAuth exchange code error:', error)
+    response.headers.set('location', `${publicBase}${loginError}`)
+    return response
+  }
+
+  if (data.user) {
+    const user = data.user
+    const fullName =
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      ''
+    const phone = user.user_metadata?.phone || ''
+    const companyName = user.user_metadata?.company_name || ''
+
+    const { error: profileError } = await supabase.from('profiles').upsert(
+      {
+        id: user.id,
+        email: user.email ?? '',
+        full_name: fullName,
+        phone,
+        company_name: companyName,
+      },
+      { onConflict: 'id' }
+    )
+
+    if (profileError) {
+      console.error('Failed to ensure OAuth user profile:', profileError)
+    }
+  }
+
+  return response
 }
