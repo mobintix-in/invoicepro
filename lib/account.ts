@@ -70,6 +70,7 @@ export interface ProfileInput {
   ifscCode: string
   bankBranch: string
   jurisdiction: string
+  defaultInvoiceNotes: string
 }
 
 export interface Profile extends ProfileInput {
@@ -96,10 +97,11 @@ type ProfileRow = {
   ifsc_code: string
   bank_branch: string
   jurisdiction: string
+  default_invoice_notes: string
 }
 
 const PROFILE_COLUMNS =
-  'id, full_name, phone, company_name, email, created_at, address, gstin, state_name, state_code, pan, bank_account_name, bank_name, account_number, ifsc_code, bank_branch, jurisdiction'
+  'id, full_name, phone, company_name, email, created_at, address, gstin, state_name, state_code, pan, bank_account_name, bank_name, account_number, ifsc_code, bank_branch, jurisdiction, default_invoice_notes'
 
 export async function getMyProfile(): Promise<Profile | null> {
   const supabase = createClient()
@@ -162,6 +164,7 @@ export async function getMyProfile(): Promise<Profile | null> {
     ifscCode: row.ifsc_code ?? '',
     bankBranch: row.bank_branch ?? '',
     jurisdiction: row.jurisdiction ?? '',
+    defaultInvoiceNotes: row.default_invoice_notes ?? '',
   }
 }
 
@@ -190,6 +193,7 @@ export async function updateMyProfile(input: ProfileInput): Promise<void> {
         ifsc_code: input.ifscCode.trim(),
         bank_branch: input.bankBranch.trim(),
         jurisdiction: input.jurisdiction.trim(),
+        default_invoice_notes: input.defaultInvoiceNotes.trim(),
       },
       { onConflict: 'id' },
     )

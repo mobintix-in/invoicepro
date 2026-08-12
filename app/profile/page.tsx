@@ -25,6 +25,7 @@ const EMPTY: ProfileInput = {
   ifscCode: '',
   bankBranch: '',
   jurisdiction: '',
+  defaultInvoiceNotes: '',
 }
 
 function formatDate(iso: string | null): string {
@@ -90,6 +91,7 @@ export default function ProfilePage() {
           ifscCode: p.ifscCode,
           bankBranch: p.bankBranch,
           jurisdiction: p.jurisdiction,
+          defaultInvoiceNotes: p.defaultInvoiceNotes,
         })
         setEmail(p.email)
         setCreatedAt(p.createdAt)
@@ -214,6 +216,26 @@ export default function ProfilePage() {
           </div>
         </Section>
 
+        {/* Invoice defaults */}
+        <Section
+          title="Invoice defaults"
+          hint="These notes are copied automatically into every new invoice. Existing invoices keep their own notes."
+        >
+          <div>
+            <label htmlFor="defaultInvoiceNotes" className={labelCls}>Default invoice notes</label>
+            <textarea
+              id="defaultInvoiceNotes"
+              rows={5}
+              value={form.defaultInvoiceNotes}
+              onChange={(e) => set('defaultInvoiceNotes', e.target.value)}
+              placeholder={'Payment due within 15 days.\nGoods once sold will not be taken back.\nThank you for your business.'}
+              className={inputCls + ' resize-y'}
+            />
+            <p className="mt-1.5 text-xs text-gray-400">
+              You can still change or remove these notes on an individual invoice.
+            </p>
+          </div>
+        </Section>
         {error && <p className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-600">{error}</p>}
         {message && <p className="rounded-lg bg-green-50 px-3.5 py-2.5 text-sm text-green-700">{message}</p>}
 

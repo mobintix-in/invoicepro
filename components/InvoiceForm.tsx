@@ -323,6 +323,7 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
         setIfscCode(p.ifscCode)
         setBankBranch(p.bankBranch)
         setJurisdiction(p.jurisdiction)
+        setNotes((current) => current || p.defaultInvoiceNotes)
       })
       .catch(() => setLoadError('Could not load your saved business profile.'))
   }, [mode])
