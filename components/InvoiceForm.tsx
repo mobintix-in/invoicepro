@@ -6,6 +6,7 @@ import type { Invoice, LineItem, Party, InvoiceStatus } from '@/types'
 import { createInvoice, updateInvoice, nextInvoiceNumber, getInvoiceQuota, type InvoiceQuota } from '@/lib/storage'
 import { getMyProfile } from '@/lib/account'
 import { listClients, saveClient, type Client } from '@/lib/clients'
+import { listFabricLots, totalFabricMeters, type FabricLot } from '@/lib/fabric-production'
 import { parseGstin, lookupGstin } from '@/lib/gstin'
 import { generateId, today, daysFromNow, formatCurrency, roundMoney } from '@/lib/utils'
 
@@ -37,12 +38,53 @@ function databaseErrorMessage(error: unknown): string {
 
 const defaultParty: Party = { name: '', email: '', address: '', phone: '', gstin: '', stateName: '', stateCode: '' }
 
+function fabricDescription(lot: FabricLot, rollNumber: string) {
+  return [
+    lot.category || 'Fabric',
+    lot.quality,
+    lot.shade ? `Shade ${lot.shade}` : '',
+    lot.variation,
+    lot.construction ? `Construction ${lot.construction}` : '',
+    lot.widthInches ? `${lot.widthInches}" width` : '',
+    lot.gsm ? `${lot.gsm} GSM` : '',
+    lot.lotNumber ? `Lot ${lot.lotNumber}` : '',
+    `Roll/Thaan ${rollNumber || '-'}`,
+  ]
+    .filter(Boolean)
+    .join(' | ')
+}
+
+function fabricLineItems(lot: FabricLot, rate = lot.ratePerMeter): LineItem[] {
+  return lot.rolls
+    .filter((roll) => Number.isFinite(roll.meters) && roll.meters > 0)
+    .map((roll) => ({
+      id: generateId(),
+      description: fabricDescription(lot, roll.rollNumber),
+      quantity: roll.meters,
+      rate,
+      amount: roundMoney(roll.meters * rate),
+      hsnCode: lot.hsnCode,
+      unit: 'Metres',
+      gstRate: lot.gstRate,
+    }))
+}
+
+function isBlankLineItem(item: LineItem) {
+  return (
+    !item.description.trim() &&
+    !item.hsnCode?.trim() &&
+    item.rate === 0 &&
+    item.amount === 0
+  )
+}
+
 interface Props {
   mode: 'new' | 'edit'
   initialData?: Invoice
+  fabricLotId?: string
 }
 
-export default function InvoiceForm({ mode, initialData }: Props) {
+export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
   const router = useRouter()
 
   // Edit mode mounts with initialData already loaded, so initialize from it
@@ -74,6 +116,10 @@ export default function InvoiceForm({ mode, initialData }: Props) {
   const [dispatchThrough, setDispatchThrough] = useState(() => initialData?.dispatchThrough ?? '')
   const [destination, setDestination] = useState(() => initialData?.destination ?? '')
   const [clients, setClients] = useState<Client[]>([])
+  const [fabricLots, setFabricLots] = useState<FabricLot[]>([])
+  const [importedFabricLot, setImportedFabricLot] = useState<FabricLot | null>(null)
+  const [importedFabricItemIds, setImportedFabricItemIds] = useState<string[]>([])
+  const [fabricRate, setFabricRate] = useState(0)
   const [savingClient, setSavingClient] = useState(false)
   const [quota, setQuota] = useState<InvoiceQuota | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -87,6 +133,19 @@ export default function InvoiceForm({ mode, initialData }: Props) {
     ),
   )
   const total = roundMoney(subtotal + tax)
+  const importedFabricIds = new Set(importedFabricItemIds)
+  const importedFabricItems = lineItems.filter((item) => importedFabricIds.has(item.id))
+  const importedFabricMeters = importedFabricItems.reduce((sum, item) => sum + item.quantity, 0)
+  const importedFabricSubtotal = roundMoney(
+    importedFabricItems.reduce((sum, item) => sum + item.amount, 0),
+  )
+  const importedFabricTax = roundMoney(
+    importedFabricItems.reduce(
+      (sum, item) => sum + item.amount * ((item.gstRate ?? taxRate) / 100),
+      0,
+    ),
+  )
+  const importedFabricAmount = roundMoney(importedFabricSubtotal + importedFabricTax)
 
   // Saved clients power the "Bill To" quick-picker.
   useEffect(() => {
@@ -94,6 +153,54 @@ export default function InvoiceForm({ mode, initialData }: Props) {
       .then(setClients)
       .catch(() => setLoadError('Could not load your saved clients.'))
   }, [])
+
+  useEffect(() => {
+    if (mode !== 'new') return
+
+    let cancelled = false
+    listFabricLots()
+      .then((lots) => {
+        if (cancelled) return
+        setFabricLots(lots)
+        if (!fabricLotId) return
+
+        const lot = lots.find((item) => item.id === fabricLotId)
+        if (!lot) {
+          setLoadError('The selected fabric lot could not be found.')
+          return
+        }
+
+        const items = fabricLineItems(lot)
+        if (items.length === 0) {
+          setLoadError('The selected fabric lot has no metre entries to invoice.')
+          return
+        }
+
+        setImportedFabricLot(lot)
+        setImportedFabricItemIds(items.map((item) => item.id))
+        setFabricRate(lot.ratePerMeter)
+        setLineItems((current) =>
+          current.length === 1 && isBlankLineItem(current[0])
+            ? items
+            : [...current, ...items],
+        )
+        setTo((current) =>
+          current.name.trim()
+            ? current
+            : { ...current, name: lot.partyName || lot.productionCompany },
+        )
+        setDeliveryNote((current) => current || lot.challanNumber)
+      })
+      .catch((error) => {
+        if (!cancelled && fabricLotId) {
+          setLoadError(`Could not import the fabric lot: ${databaseErrorMessage(error)}`)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [mode, fabricLotId])
 
   // Fill every "Bill To" field from a saved client in one click.
   function applyClient(clientId: string) {
@@ -108,6 +215,54 @@ export default function InvoiceForm({ mode, initialData }: Props) {
       stateName: c.stateName,
       stateCode: c.stateCode,
     })
+  }
+
+  function importFabricLot(lotId: string) {
+    const lot = fabricLots.find((item) => item.id === lotId)
+    if (!lot) return
+
+    const items = fabricLineItems(lot)
+    if (items.length === 0) {
+      setLoadError('This fabric lot has no metre entries to invoice.')
+      return
+    }
+
+    const previousIds = new Set(importedFabricItemIds)
+    setLineItems((current) => {
+      const withoutPreviousImport = current.filter((item) => !previousIds.has(item.id))
+      const manualItems =
+        withoutPreviousImport.length === 1 && isBlankLineItem(withoutPreviousImport[0])
+          ? []
+          : withoutPreviousImport
+      return [...manualItems, ...items]
+    })
+    setImportedFabricLot(lot)
+    setImportedFabricItemIds(items.map((item) => item.id))
+    setFabricRate(lot.ratePerMeter)
+    setTo((current) =>
+      current.name.trim()
+        ? current
+        : { ...current, name: lot.partyName || lot.productionCompany },
+    )
+    setDeliveryNote((current) => current || lot.challanNumber)
+    setLoadError(null)
+  }
+
+  function updateFabricRate(rawValue: string) {
+    const rate = Math.max(0, parseFloat(rawValue) || 0)
+    const itemIds = new Set(importedFabricItemIds)
+    setFabricRate(rate)
+    setLineItems((current) =>
+      current.map((item) =>
+        itemIds.has(item.id)
+          ? {
+              ...item,
+              rate,
+              amount: roundMoney(item.quantity * rate),
+            }
+          : item,
+      ),
+    )
   }
 
   // Save whatever is currently typed in "Bill To" as a reusable client.
@@ -451,6 +606,65 @@ export default function InvoiceForm({ mode, initialData }: Props) {
 
         {/* Line items */}
         <Section title="Line Items">
+          {mode === 'new' && fabricLots.length > 0 && (
+            <div className="mb-5 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px_180px] lg:items-end">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                    Import from Fabric Production
+                  </label>
+                  <select
+                    value={importedFabricLot?.id ?? ''}
+                    onChange={(event) => importFabricLot(event.target.value)}
+                    className={inputCls}
+                  >
+                    <option value="">Select a fabric lot...</option>
+                    {fabricLots.map((lot) => (
+                      <option key={lot.id} value={lot.id}>
+                        {[lot.lotNumber || 'No lot', lot.category, lot.quality, `${totalFabricMeters(lot)} m`]
+                          .filter(Boolean)
+                          .join(' | ')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {importedFabricLot && (
+                  <>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                        Rate per metre (₹)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={fabricRate || ''}
+                        onChange={(event) => updateFabricRate(event.target.value)}
+                        placeholder="Enter metre rate"
+                        className={`${inputCls} text-right`}
+                      />
+                    </div>
+                    <div className="rounded-lg bg-white px-4 py-2.5 ring-1 ring-indigo-100">
+                      <p className="text-xs font-medium text-gray-500">
+                        {importedFabricItems.length} rolls · {importedFabricMeters.toLocaleString('en-IN')} metres
+                      </p>
+                      <p className="mt-0.5 text-lg font-bold text-gray-900">
+                        {formatCurrency(importedFabricAmount)}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+              {importedFabricLot && (
+                <p className="mt-3 text-xs text-indigo-700">
+                  HSN {importedFabricLot.hsnCode || 'not set'} · {importedFabricLot.gstRate}% GST · total includes GST.
+                  Every roll/thaan is added below as a separate metre-wise line item, and changing the common rate updates the full invoice.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Desktop table */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full min-w-[700px]">
