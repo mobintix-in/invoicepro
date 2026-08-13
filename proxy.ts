@@ -65,7 +65,6 @@ export async function proxy(request: NextRequest) {
 
   // Without configured Supabase env we cannot validate a session; treat as unauthenticated.
   let isAuthenticated = false
-  let isAdmin = false
   let hasActiveSubscription = false
 
   const hasSessionCookie = request.cookies
@@ -122,7 +121,6 @@ export async function proxy(request: NextRequest) {
           .rpc('my_access')
           .single<{ is_admin: boolean; is_active: boolean }>()
         if (accessError) console.error('Supabase access check failed:', accessError)
-        isAdmin = !!data?.is_admin
         hasActiveSubscription = !!data?.is_active
       }
     } catch (error) {
@@ -155,16 +153,10 @@ export async function proxy(request: NextRequest) {
   if (isMarketingPage) return response
 
   // Paywall: without an active subscription, dashboard, subscribe screen and
-  // account profile are reachable (admins also get the approval console).
+  // account profile remain reachable.
   const unpaidAllowed = pathname === '/' || pathname === '/subscribe' || pathname === '/profile'
-  if (!hasActiveSubscription && !isAdmin && !unpaidAllowed) {
+  if (!hasActiveSubscription && !unpaidAllowed) {
     return NextResponse.redirect(new URL('/subscribe', request.url))
-  }
-  // Admins may not have a personal subscription but should still reach the admin
-  // console (/admin and its sub-pages), /subscribe, and /profile freely; block
-  // them from the rest only if unpaid.
-  if (!hasActiveSubscription && isAdmin && !unpaidAllowed && !pathname.startsWith('/admin')) {
-    return NextResponse.redirect(new URL('/admin', request.url))
   }
 
   return response

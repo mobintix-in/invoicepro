@@ -68,9 +68,9 @@ export default function SubscribePage() {
     setError(null)
     setSubmitting(true)
     try {
-      await submitPayment(utr, selectedPackage.key)
+      const receipt = await submitPayment(utr, selectedPackage.key)
+      setSub(receipt)
       setUtr('')
-      await refresh()
     } catch (err) {
       const message = err instanceof Error ? err.message : ''
       setError(
@@ -84,7 +84,9 @@ export default function SubscribePage() {
   }
 
   async function handleSignOut() {
-    if (isSupabaseConfigured()) await createClient().auth.signOut()
+    if (isSupabaseConfigured()) {
+      await createClient().auth.signOut({ scope: 'local' })
+    }
     router.push('/login')
     router.refresh()
   }
