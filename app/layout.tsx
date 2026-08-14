@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
+import TrackerProvider from "@/components/TrackerProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +37,9 @@ export default function RootLayout({
               "try{var a=localStorage.getItem('accent');if(a&&a!=='indigo')document.documentElement.setAttribute('data-accent',a);}catch(e){}",
           }}
         />
-        <AppShell>{children}</AppShell>
+        <TrackerProvider>
+          <AppShell>{children}</AppShell>
+        </TrackerProvider>
       </body>
     </html>
   );
