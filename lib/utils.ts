@@ -23,11 +23,15 @@ function toWords(num: number): string {
 }
 
 export function roundMoney(amount: number): number {
-  return Math.round((amount + Number.EPSILON) * 100) / 100
+  const num = Number(amount)
+  if (!Number.isFinite(num)) return 0
+  return Math.round((num + Number.EPSILON) * 100) / 100
 }
 
 export function amountToWords(amount: number): string {
-  const totalPaise = Math.max(0, Math.round(amount * 100))
+  const num = Number(amount)
+  const safeAmount = Number.isFinite(num) ? num : 0
+  const totalPaise = Math.max(0, Math.round(safeAmount * 100))
   const whole = Math.floor(totalPaise / 100)
   const paise = totalPaise % 100
   let result = 'Indian Rupees ' + toWords(whole)
@@ -36,10 +40,12 @@ export function amountToWords(amount: number): string {
 }
 
 export function formatCurrency(amount: number): string {
+  const num = Number(amount)
+  const safeAmount = Number.isFinite(num) ? num : 0
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
-  }).format(amount)
+  }).format(safeAmount)
 }
 
 export function formatDate(dateString: string): string {

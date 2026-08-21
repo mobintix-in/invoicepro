@@ -96,11 +96,32 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
   const [dueDate, setDueDate] = useState(() => initialData?.dueDate ?? daysFromNow(30))
   const [from, setFrom] = useState<Party>(() => initialData?.from ?? defaultParty)
   const [to, setTo] = useState<Party>(() => initialData?.to ?? defaultParty)
-  const [lineItems, setLineItems] = useState<LineItem[]>(() =>
-    initialData?.lineItems ?? [
-      { id: generateId(), description: '', quantity: 1, rate: 0, amount: 0, hsnCode: '', unit: 'Units' },
-    ],
-  )
+  const [lineItems, setLineItems] = useState<LineItem[]>(() => {
+    if (initialData?.lineItems && initialData.lineItems.length > 0) {
+      return initialData.lineItems.map((item, idx) => {
+        const quantity = Number(item.quantity ?? 1) || 0
+        let rate = Number(item.rate ?? (item as any).unit_price ?? (item as any).unitPrice ?? (item as any).price ?? 0) || 0
+        let amount = Number(item.amount)
+        if (!Number.isFinite(amount) || (amount === 0 && rate > 0)) {
+          amount = roundMoney(quantity * rate)
+        }
+        if (rate === 0 && amount > 0 && quantity > 0) {
+          rate = roundMoney(amount / quantity)
+        }
+        return {
+          id: String(item.id || `item-${idx + 1}`),
+          description: String(item.description || ''),
+          quantity,
+          rate,
+          amount: Number.isFinite(amount) ? amount : 0,
+          hsnCode: item.hsnCode ?? (item as any).hsn_code ?? '',
+          unit: item.unit ?? 'Units',
+          gstRate: item.gstRate != null ? Number(item.gstRate) : ((item as any).gst_rate != null ? Number((item as any).gst_rate) : undefined),
+        }
+      })
+    }
+    return [{ id: generateId(), description: '', quantity: 1, rate: 0, amount: 0, hsnCode: '', unit: 'Units' }]
+  })
   const [notes, setNotes] = useState(() => initialData?.notes ?? '')
   const [taxRate, setTaxRate] = useState(() => initialData?.taxRate ?? 0)
   const [gstType, setGstType] = useState<'cgst_sgst' | 'igst'>(() => initialData?.gstType ?? 'cgst_sgst')
@@ -125,10 +146,17 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const subtotal = roundMoney(lineItems.reduce((sum, item) => sum + item.amount, 0))
+  const subtotal = roundMoney(
+    lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
+  )
   const tax = roundMoney(
     lineItems.reduce(
-      (sum, item) => sum + roundMoney(item.amount * ((item.gstRate ?? taxRate) / 100)),
+      (sum, item) =>
+        sum +
+        roundMoney(
+          (Number(item.amount) || 0) *
+            (((item.gstRate != null ? Number(item.gstRate) : Number(taxRate)) || 0) / 100),
+        ),
       0,
     ),
   )

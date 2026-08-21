@@ -37,6 +37,47 @@ function optional(value: string): string | undefined {
   return value || undefined
 }
 
+function normalizeParty(raw: unknown): Invoice['from'] {
+  if (!raw || typeof raw !== 'object') {
+    return { name: '', email: '', address: '', phone: '', gstin: '', stateName: '', stateCode: '' }
+  }
+  const p = raw as Record<string, unknown>
+  return {
+    name: String(p.name || ''),
+    email: String(p.email || ''),
+    address: String(p.address || ''),
+    phone: String(p.phone || ''),
+    gstin: p.gstin ? String(p.gstin) : undefined,
+    stateName: p.stateName ? String(p.stateName) : (p.state_name ? String(p.state_name) : undefined),
+    stateCode: p.stateCode ? String(p.stateCode) : (p.state_code ? String(p.state_code) : undefined),
+  }
+}
+
+function normalizeLineItems(raw: unknown): Invoice['lineItems'] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((item: any, idx: number) => {
+    const quantity = Number(item?.quantity ?? item?.qty ?? 1) || 0
+    let rate = Number(item?.rate ?? item?.unit_price ?? item?.unitPrice ?? item?.price ?? 0) || 0
+    let amount = Number(item?.amount)
+    if (!Number.isFinite(amount) || (amount === 0 && rate > 0)) {
+      amount = Math.round((quantity * rate + Number.EPSILON) * 100) / 100
+    }
+    if (rate === 0 && amount > 0 && quantity > 0) {
+      rate = Math.round((amount / quantity + Number.EPSILON) * 100) / 100
+    }
+    return {
+      id: String(item?.id || `item-${idx + 1}`),
+      description: String(item?.description || ''),
+      quantity,
+      rate,
+      amount: Number.isFinite(amount) ? amount : 0,
+      hsnCode: item?.hsnCode != null ? String(item.hsnCode) : (item?.hsn_code != null ? String(item.hsn_code) : ''),
+      unit: item?.unit ? String(item.unit) : 'Units',
+      gstRate: item?.gstRate != null ? Number(item.gstRate) : (item?.gst_rate != null ? Number(item.gst_rate) : undefined),
+    }
+  })
+}
+
 function fromDb(row: DbRow): Invoice {
   return {
     id: row.id,
@@ -44,14 +85,14 @@ function fromDb(row: DbRow): Invoice {
     status: row.status as Invoice['status'],
     issueDate: row.issue_date,
     dueDate: row.due_date,
-    from: row.from_party as Invoice['from'],
-    to: row.to_party as Invoice['to'],
-    lineItems: row.line_items as Invoice['lineItems'],
-    notes: row.notes,
-    taxRate: Number(row.tax_rate),
-    subtotal: Number(row.subtotal),
-    tax: Number(row.tax),
-    total: Number(row.total),
+    from: normalizeParty(row.from_party),
+    to: normalizeParty(row.to_party),
+    lineItems: normalizeLineItems(row.line_items),
+    notes: row.notes || '',
+    taxRate: Number(row.tax_rate) || 0,
+    subtotal: Number(row.subtotal) || 0,
+    tax: Number(row.tax) || 0,
+    total: Number(row.total) || 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     template: row.template ?? 'classic',
