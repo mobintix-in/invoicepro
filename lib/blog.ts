@@ -65,14 +65,3 @@ export function rowToPost(row: BlogPostRow): BlogPost {
 export function formatBlogDate(iso: string): string {
   return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(new Date(iso))
 }
-
-/** Turn a title into a URL-safe slug. */
-export function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}

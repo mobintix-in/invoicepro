@@ -56,18 +56,3 @@ export function rowToPackage(row: PackageRow): Package {
     active: row.active,
   }
 }
-
-/** Turn a name into a stable, URL-safe package key. */
-export function toPackageKey(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
-export function formatLimit(limit: number | null): string {
-  return limit === null ? 'Unlimited' : `${limit} / month`
-}

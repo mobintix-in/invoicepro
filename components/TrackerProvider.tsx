@@ -91,7 +91,7 @@ export default function TrackerProvider({ children }: { children: React.ReactNod
           })
           bc.close()
         }
-      } catch (e) {
+      } catch {
         // ignore broadcast errors
       }
 
@@ -119,7 +119,7 @@ export default function TrackerProvider({ children }: { children: React.ReactNod
             viewed_at: nowIso,
             ...(userId ? { user_id: userId } : {}),
           })
-        } catch (err) {
+        } catch {
           // Silent fallback
         }
       }

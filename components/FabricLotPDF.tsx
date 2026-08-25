@@ -1,6 +1,5 @@
 'use client'
 
-import React from 'react'
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
 import type { FabricLot } from '@/lib/fabric-production'
 import { roundMoney } from '@/lib/utils'
