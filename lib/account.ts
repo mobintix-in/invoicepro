@@ -192,21 +192,3 @@ export async function updateMyProfile(input: ProfileInput): Promise<void> {
   if (error) throw error
 }
 
-/**
- * Submit a payment for server-side validation and manual review. Package price,
- * status, ownership, and timestamps are resolved by the database RPC.
- */
-export async function submitPayment(utr: string, planKey: string): Promise<Subscription> {
-  const { data, error } = await createClient().rpc('submit_subscription_payment_v2', {
-    p_utr: utr.trim(),
-    p_plan_key: planKey,
-  })
-  if (error) throw error
-
-  const row = (Array.isArray(data) ? data[0] : data) as SubRow | null
-  if (!row || row.status !== 'pending') {
-    throw new Error('PAYMENT_SUBMISSION_NOT_CONFIRMED')
-  }
-
-  return fromRow(row)
-}

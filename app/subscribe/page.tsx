@@ -5,8 +5,15 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
-import { getMySubscription, submitPayment } from '@/lib/account'
-import { SUBSCRIPTION, upiPaymentUri, isSubscriptionActive, type Subscription } from '@/lib/subscription'
+import { getMySubscription } from '@/lib/account'
+import {
+  SUBSCRIPTION,
+  createUpiPaymentReference,
+  googlePayIntentUri,
+  upiPaymentUri,
+  isSubscriptionActive,
+  type Subscription,
+} from '@/lib/subscription'
 import { listActivePackages } from '@/lib/packages-admin'
 import { type Package } from '@/lib/packages'
 
@@ -22,8 +29,7 @@ export default function SubscribePage() {
   const [sub, setSub] = useState<Subscription | null>(null)
   const [packages, setPackages] = useState<Package[]>([])
   const [selectedKey, setSelectedKey] = useState<string>('')
-  const [utr, setUtr] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const [paymentReference, setPaymentReference] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   async function refresh() {
@@ -45,7 +51,10 @@ export default function SubscribePage() {
         const preferred =
           availablePackages.find((plan) => plan.highlighted) ??
           availablePackages[0]
-        if (preferred) setSelectedKey(preferred.key)
+        if (preferred) {
+          setSelectedKey(preferred.key)
+          setPaymentReference(createUpiPaymentReference(preferred.key))
+        }
         else setError('No subscription plans are currently available.')
       })
       .catch(() => setError('Could not load subscription details. Please try again.'))
@@ -54,34 +63,6 @@ export default function SubscribePage() {
 
   const selectedPackage = packages.find((p) => p.key === selectedKey) ?? null
   const amountDue = selectedPackage?.priceInr ?? SUBSCRIPTION.priceInr
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (utr.trim().length < 6) {
-      setError('Please enter the UPI transaction / UTR reference from your payment.')
-      return
-    }
-    if (!selectedPackage) {
-      setError('Please choose an available subscription plan.')
-      return
-    }
-    setError(null)
-    setSubmitting(true)
-    try {
-      const receipt = await submitPayment(utr, selectedPackage.key)
-      setSub(receipt)
-      setUtr('')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : ''
-      setError(
-        message.includes('SUBSCRIPTION_NOT_RENEWABLE')
-          ? 'This subscription cannot be resubmitted while it is pending or active.'
-          : 'Could not submit the payment. Please verify the reference and try again.',
-      )
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   async function handleSignOut() {
     if (isSupabaseConfigured()) {
@@ -121,12 +102,12 @@ export default function SubscribePage() {
             expired={status === 'expired'}
             packages={packages}
             selectedKey={selectedKey}
-            onSelectKey={setSelectedKey}
+            onSelectKey={(key) => {
+              setSelectedKey(key)
+              setPaymentReference(createUpiPaymentReference(key))
+            }}
+            paymentReference={paymentReference}
             amountDue={amountDue}
-            utr={utr}
-            setUtr={setUtr}
-            onSubmit={handleSubmit}
-            submitting={submitting}
             error={error}
           />
         )}
@@ -197,11 +178,8 @@ function PayFlow({
   packages,
   selectedKey,
   onSelectKey,
+  paymentReference,
   amountDue,
-  utr,
-  setUtr,
-  onSubmit,
-  submitting,
   error,
 }: {
   rejected: boolean
@@ -209,13 +187,15 @@ function PayFlow({
   packages: Package[]
   selectedKey: string
   onSelectKey: (key: string) => void
+  paymentReference: string
   amountDue: number
-  utr: string
-  setUtr: (v: string) => void
-  onSubmit: (e: React.FormEvent) => void
-  submitting: boolean
   error: string | null
 }) {
+  const paymentNote = `InvoicePro ${selectedKey || 'subscription'} plan`
+  const directUpiUri = paymentReference
+    ? upiPaymentUri(amountDue, paymentNote, paymentReference)
+    : ''
+
   return (
     <div>
       {rejected && (
@@ -275,44 +255,45 @@ function PayFlow({
           <span className="text-base font-medium text-gray-400"> / month</span>
         </div>
 
-        <div className="mt-5 rounded-xl border border-gray-200 p-4">
-          <QRCodeSVG value={upiPaymentUri(amountDue)} size={188} level="M" marginSize={2} />
-        </div>
+        {directUpiUri && (
+          <div className="mt-5 rounded-xl border border-gray-200 bg-white p-4">
+            <QRCodeSVG value={directUpiUri} size={188} level="M" marginSize={2} />
+          </div>
+        )}
         <p className="mt-3 text-center text-sm text-gray-500">
           Scan with any UPI app (GPay, PhonePe, Paytm, BHIM) to pay
           <span className="font-medium text-gray-700"> ₹{amountDue.toLocaleString('en-IN')}</span> to
           <span className="font-medium text-gray-700"> {SUBSCRIPTION.upiId}</span>.
         </p>
+        {paymentReference && (
+          <p className="mt-1 text-center text-xs text-gray-400">
+            Payment reference: {paymentReference}
+          </p>
+        )}
+        {directUpiUri && (
+          <div className="mt-4 grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+            <a
+              href={googlePayIntentUri(directUpiUri)}
+              className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+            >
+              Pay with Google Pay
+            </a>
+            <a
+              href={directUpiUri}
+              className="inline-flex items-center justify-center rounded-lg border border-indigo-300 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50"
+            >
+              Open any UPI app
+            </a>
+          </div>
+        )}
+        <p className="mt-2 text-center text-xs text-gray-400">
+          On a computer, scan the QR. On Android, use either payment button.
+        </p>
       </div>
 
-      <div className="my-6 border-t border-gray-200" />
-
-      <form onSubmit={onSubmit} className="space-y-3">
-        <label htmlFor="utr" className="block text-sm font-medium text-gray-700">
-          After paying, enter the UPI transaction / UTR reference
-        </label>
-        <input
-          id="utr"
-          type="text"
-          value={utr}
-          onChange={(e) => setUtr(e.target.value)}
-          placeholder="e.g. 4501 2233 4455"
-          className="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-        />
-        {error && (
-          <p className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-600">{error}</p>
-        )}
-        <button
-          type="submit"
-          disabled={submitting || !selectedKey}
-          className="flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
-        >
-          {submitting ? 'Submitting…' : 'Submit payment for verification'}
-        </button>
-        <p className="text-center text-xs text-gray-400">
-          You&apos;ll get access as soon as we confirm the transfer.
-        </p>
-      </form>
+      {error && (
+        <p className="mt-5 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-600">{error}</p>
+      )}
     </div>
   )
 }
