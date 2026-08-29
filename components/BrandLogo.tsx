@@ -1,12 +1,15 @@
-export default function BrandLogo() {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600">
+import Link from 'next/link'
+
+export default function BrandLogo({ href = '/welcome' }: { href?: string }) {
+  const content = (
+    <div className="group flex items-center gap-2.5 transition-transform duration-200 hover:scale-[1.02]">
+      {/* Gradient App Icon with Glass Inner Glow */}
+      <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-violet-600 shadow-md shadow-indigo-600/25 ring-1 ring-white/20 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-indigo-600/40">
         <svg
           className="h-5 w-5 text-white"
           fill="none"
           viewBox="0 0 24 24"
-          strokeWidth={2.5}
+          strokeWidth={2.3}
           stroke="currentColor"
         >
           <path
@@ -16,7 +19,24 @@ export default function BrandLogo() {
           />
         </svg>
       </div>
-      <span className="text-lg font-bold tracking-tight text-gray-900">InvoicePro</span>
+
+      {/* Brand Wordmark with Accent Badge */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-xl font-extrabold tracking-tight text-slate-900">
+          Invoice<span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">Pro</span>
+        </span>
+        <span className="rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-indigo-700">
+          GST
+        </span>
+      </div>
     </div>
+  )
+
+  if (!href) return content
+
+  return (
+    <Link href={href} aria-label="InvoicePro Home">
+      {content}
+    </Link>
   )
 }

@@ -3,6 +3,7 @@
   import { Suspense, useState } from 'react'
   import { useRouter, useSearchParams } from 'next/navigation'
   import Link from 'next/link'
+  import BrandLogo from '@/components/BrandLogo'
   import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 
   function LoginForm() {
@@ -107,42 +108,25 @@
         {/* Top Header Navigation: Back to Home Button */}
         <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10">
           <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-2xs transition hover:bg-gray-100 hover:border-gray-300 hover:text-indigo-600 cursor-pointer"
+            href="/welcome"
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 hover:border-gray-300 hover:text-indigo-600 cursor-pointer"
           >
             <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
             </svg>
-            <span>Home</span>
+            <span>Back to Home</span>
           </Link>
         </div>
 
         <div className="flex min-h-screen items-center justify-center px-4 py-12">
           <div className="w-full max-w-sm">
             {/* Logo & Header */}
-            <Link href="/" className="group mb-8 flex flex-col items-center gap-3 cursor-pointer">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 shadow-sm transition group-hover:bg-indigo-700">
-                <svg
-                  className="h-6 w-6 text-white"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                  />
-                </svg>
-              </div>
-              <div className="text-center">
-                <h1 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition">InvoicePro</h1>
-                <p className="mt-1 text-sm text-gray-500">
-                  {mode === 'signin' ? 'Sign in to your account' : 'Create a new account'}
-                </p>
-              </div>
-            </Link>
+            <div className="mb-8 flex flex-col items-center gap-3">
+              <BrandLogo href="/welcome" />
+              <p className="mt-1 text-center text-sm text-gray-500">
+                {mode === 'signin' ? 'Sign in to your account' : 'Create a new account'}
+              </p>
+            </div>
 
           {/* Card */}
           <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">

@@ -15,7 +15,7 @@ alter table public.invoices
   add column if not exists destination       text not null default '';
 
 update public.subscriptions s
-set plan_key = 'starter'
+set plan_key = 'monthly'
 where plan_key is null
    or not exists (select 1 from public.packages p where p.key = s.plan_key);
 

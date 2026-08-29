@@ -15,7 +15,12 @@ import {
   type Subscription,
 } from '@/lib/subscription'
 import { listActivePackages } from '@/lib/packages-admin'
-import { type Package } from '@/lib/packages'
+import {
+  type Package,
+  formatDuration,
+  formatBillingCycle,
+  getMonthlyEquivalent,
+} from '@/lib/packages'
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
@@ -54,8 +59,9 @@ export default function SubscribePage() {
         if (preferred) {
           setSelectedKey(preferred.key)
           setPaymentReference(createUpiPaymentReference(preferred.key))
+        } else {
+          setError('No subscription plans are currently available.')
         }
-        else setError('No subscription plans are currently available.')
       })
       .catch(() => setError('Could not load subscription details. Please try again.'))
       .finally(() => setLoading(false))
@@ -83,7 +89,7 @@ export default function SubscribePage() {
       <div className="mb-6 text-center">
         <h1 className="text-2xl font-bold text-gray-900">InvoicePro Subscription</h1>
         <p className="mt-1 text-sm text-gray-500">
-          A monthly subscription is required to access your invoices.
+          Select a subscription plan (1 Month, 6 Months, or 1 Year) to access your invoices.
         </p>
       </div>
 
@@ -107,6 +113,7 @@ export default function SubscribePage() {
               setPaymentReference(createUpiPaymentReference(key))
             }}
             paymentReference={paymentReference}
+            selectedPackage={selectedPackage}
             amountDue={amountDue}
             error={error}
           />
@@ -122,7 +129,10 @@ export default function SubscribePage() {
       {!canPay ? null : (
         <p className="mt-4 text-center text-xs text-gray-400">
           Paying to <span className="font-medium text-gray-500">{SUBSCRIPTION.upiId}</span>. After we
-          confirm your payment your account is activated for {SUBSCRIPTION.planMonths} month.
+          confirm your payment your account is activated for{' '}
+          <span className="font-medium text-gray-600">
+            {formatDuration(selectedPackage?.durationMonths ?? SUBSCRIPTION.planMonths)}
+          </span>.
         </p>
       )}
     </main>
@@ -179,6 +189,7 @@ function PayFlow({
   selectedKey,
   onSelectKey,
   paymentReference,
+  selectedPackage,
   amountDue,
   error,
 }: {
@@ -188,10 +199,12 @@ function PayFlow({
   selectedKey: string
   onSelectKey: (key: string) => void
   paymentReference: string
+  selectedPackage: Package | null
   amountDue: number
   error: string | null
 }) {
-  const paymentNote = `InvoicePro ${selectedKey || 'subscription'} plan`
+  const durationMonths = selectedPackage?.durationMonths ?? 1
+  const paymentNote = `InvoicePro ${selectedPackage?.name || selectedKey} (${formatDuration(durationMonths)})`
   const directUpiUri = paymentReference
     ? upiPaymentUri(amountDue, paymentNote, paymentReference)
     : ''
@@ -212,9 +225,17 @@ function PayFlow({
       {packages.length > 0 && (
         <div className="mb-6">
           <div className="mb-2 text-sm font-medium text-gray-700">Choose your plan</div>
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {packages.map((p) => {
               const active = p.key === selectedKey
+              const isMultiMonth = p.durationMonths > 1
+              const savings =
+                p.durationMonths === 6
+                  ? 'Save ~16%'
+                  : p.durationMonths === 12
+                  ? 'Save ~25%'
+                  : null
+
               return (
                 <button
                   key={p.key}
@@ -222,13 +243,18 @@ function PayFlow({
                   onClick={() => onSelectKey(p.key)}
                   className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
                     active
-                      ? 'border-indigo-600 ring-2 ring-indigo-500/20'
+                      ? 'border-indigo-600 bg-indigo-50/30 ring-2 ring-indigo-500/20'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-sm font-semibold text-gray-900">{p.name}</span>
+                      {savings && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                          {savings}
+                        </span>
+                      )}
                       {p.highlighted && (
                         <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
                           Popular
@@ -238,8 +264,17 @@ function PayFlow({
                     <div className="text-xs text-gray-500">{p.tagline}</div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <div className="text-sm font-bold text-gray-900">₹{p.priceInr.toLocaleString('en-IN')}</div>
-                    <div className="text-[11px] text-gray-400">/ month</div>
+                    <div className="text-sm font-bold text-gray-900">
+                      ₹{p.priceInr.toLocaleString('en-IN')}
+                    </div>
+                    <div className="text-[11px] text-gray-500">
+                      {formatBillingCycle(p.durationMonths)}
+                    </div>
+                    {isMultiMonth && (
+                      <div className="text-[10px] font-medium text-indigo-600">
+                        ₹{getMonthlyEquivalent(p.priceInr, p.durationMonths)}/mo eq.
+                      </div>
+                    )}
                   </div>
                 </button>
               )
@@ -252,8 +287,15 @@ function PayFlow({
         <div className="text-sm text-gray-500">Amount due</div>
         <div className="text-3xl font-bold text-gray-900">
           ₹{amountDue.toLocaleString('en-IN')}
-          <span className="text-base font-medium text-gray-400"> / month</span>
+          <span className="text-base font-medium text-gray-500">
+            {' '}{formatBillingCycle(durationMonths)}
+          </span>
         </div>
+        {durationMonths > 1 && (
+          <div className="mt-0.5 text-xs text-indigo-600 font-medium">
+            (Equivalent to ₹{getMonthlyEquivalent(amountDue, durationMonths).toLocaleString('en-IN')} / month)
+          </div>
+        )}
 
         {directUpiUri && (
           <div className="mt-5 rounded-xl border border-gray-200 bg-white p-4">

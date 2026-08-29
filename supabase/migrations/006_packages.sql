@@ -15,9 +15,10 @@ create extension if not exists pgcrypto; -- gen_random_uuid()
 -- ── packages ─────────────────────────────────────────────────────────────────
 create table if not exists public.packages (
   id            uuid primary key default gen_random_uuid(),
-  key           text unique not null,               -- stable id, e.g. 'starter'
+  key           text unique not null,               -- stable id, e.g. 'monthly'
   name          text not null default '',
   price_inr     integer not null default 0,
+  duration_months integer not null default 1,
   tagline       text not null default '',
   features      jsonb not null default '[]'::jsonb,  -- array of feature strings
   invoice_limit integer,                             -- null = unlimited (per month)
@@ -41,17 +42,17 @@ drop policy if exists "Admins manage packages" on public.packages;
 create policy "Admins manage packages" on public.packages
   for all using (public.is_admin(auth.uid())) with check (public.is_admin(auth.uid()));
 
--- Seed the three launch plans (skipped if their keys already exist).
-insert into public.packages (key, name, price_inr, tagline, features, invoice_limit, cta, highlighted, sort_order) values
-  ('starter', 'Starter', 299, 'For freelancers & solo founders getting started.',
-   '["Up to 50 invoices / month","Professional PDF export","UPI QR on every invoice","Single user","Email support"]'::jsonb,
-   50, 'Start with Starter', false, 1),
-  ('business', 'Business', 799, 'For growing teams that bill clients every day.',
-   '["Unlimited invoices","GST-ready invoice templates","Client & contact management","Up to 5 team members","Priority support"]'::jsonb,
-   null, 'Choose Business', true, 2),
-  ('enterprise', 'Enterprise', 1999, 'For established companies that need control & scale.',
-   '["Everything in Business","Unlimited team members","Custom branding & templates","Dedicated account manager","API & webhook access"]'::jsonb,
-   null, 'Talk to sales', false, 3)
+-- Seed the active launch plans (skipped if their keys already exist).
+insert into public.packages (key, name, price_inr, duration_months, tagline, features, invoice_limit, cta, highlighted, sort_order, active) values
+  ('monthly', '1 Month Plan', 299, 1, 'Flexible month-to-month access with all essentials.',
+   '["Unlimited invoices & clients","GST-ready invoice templates","UPI QR code on every invoice","Professional PDF & thermal receipt export","Email & WhatsApp support"]'::jsonb,
+   null, 'Get 1 Month Plan', false, 1, true),
+  ('half-yearly', '6 Months Plan', 1499, 6, 'Great value for active businesses — Save ~16%.',
+   '["Everything in Monthly plan","Save ₹295 compared to monthly","GST & HSN automatic calculations","Priority customer support","Data backup & multi-device sync"]'::jsonb,
+   null, 'Get 6 Months Plan', true, 2, true),
+  ('yearly', '1 Year Plan', 2699, 12, 'Best long-term value — Save ~25% (₹225 / month).',
+   '["Everything in 6 Months plan","Save ₹889 compared to monthly","Custom business logo & watermark","Priority VIP support & early features","Full year uninterrupted invoicing"]'::jsonb,
+   null, 'Get 1 Year Plan', false, 3, true)
 on conflict (key) do nothing;
 
 -- ── link a subscription to its plan ──────────────────────────────────────────
