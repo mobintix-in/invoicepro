@@ -136,6 +136,9 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
   const [buyerOrderNo, setBuyerOrderNo] = useState(() => initialData?.buyerOrderNo ?? '')
   const [dispatchThrough, setDispatchThrough] = useState(() => initialData?.dispatchThrough ?? '')
   const [destination, setDestination] = useState(() => initialData?.destination ?? '')
+  const [upiId, setUpiId] = useState(() => initialData?.upiId ?? '')
+  const [invoiceTheme, setInvoiceTheme] = useState(() => initialData?.invoiceTheme ?? 'indigo')
+  const [template, setTemplate] = useState(() => initialData?.template ?? 'classic')
   const [clients, setClients] = useState<Client[]>([])
   const [fabricLots, setFabricLots] = useState<FabricLot[]>([])
   const [importedFabricLot, setImportedFabricLot] = useState<FabricLot | null>(null)
@@ -352,6 +355,9 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
         setBankBranch(p.bankBranch)
         setJurisdiction(p.jurisdiction)
         setNotes((current) => current || p.defaultInvoiceNotes)
+        if (!initialData?.upiId) setUpiId(p.upiId || '')
+        if (!initialData?.invoiceTheme) setInvoiceTheme(p.invoiceTheme || 'indigo')
+        if (!initialData?.template) setTemplate(p.template || 'classic')
       })
       .catch(() => setLoadError('Could not load your saved business profile.'))
   }, [mode])
@@ -423,6 +429,9 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
       buyerOrderNo,
       dispatchThrough,
       destination,
+      upiId,
+      invoiceTheme,
+      template,
     }
     setSaveError(null)
     try {

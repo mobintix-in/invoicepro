@@ -51,4 +51,6 @@ export interface Invoice {
   buyerOrderNo?: string
   dispatchThrough?: string
   destination?: string
+  upiId?: string
+  invoiceTheme?: string
 }

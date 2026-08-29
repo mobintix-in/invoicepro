@@ -1,7 +1,9 @@
 'use client'
 import { useState } from 'react'
 import { pdf } from '@react-pdf/renderer'
+import QRCode from 'qrcode'
 import { InvoicePDFDocument } from './InvoicePDF'
+import { getMyProfile } from '@/lib/account'
 import type { Invoice } from '@/types'
 
 export default function InvoicePDFButton({ invoice }: { invoice: Invoice }) {
@@ -9,8 +11,53 @@ export default function InvoicePDFButton({ invoice }: { invoice: Invoice }) {
 
   const fileName = `${invoice.invoiceNumber || 'invoice'}.pdf`
 
-  const createPdfBlob = () =>
-    pdf(<InvoicePDFDocument invoice={invoice} />).toBlob()
+  /** Resolve effective invoice with profile fallback for upiId, theme & template */
+  async function getResolvedInvoice(): Promise<{ inv: Invoice; qrDataUrl?: string }> {
+    let current = { ...invoice }
+    try {
+      const profile = await getMyProfile()
+      if (profile) {
+        if (!current.upiId && profile.upiId) {
+          current.upiId = profile.upiId
+        }
+        if (!current.invoiceTheme && profile.invoiceTheme) {
+          current.invoiceTheme = profile.invoiceTheme
+        }
+        if (!current.template && profile.template) {
+          current.template = profile.template
+        }
+        if (!current.notes && profile.defaultInvoiceNotes) {
+          current.notes = profile.defaultInvoiceNotes
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    let qrDataUrl: string | undefined = undefined
+    if (current.upiId) {
+      const name = encodeURIComponent(current.from.name || 'Seller')
+      const amount = Number(current.total || 0).toFixed(2)
+      const upiUri = `upi://pay?pa=${encodeURIComponent(current.upiId)}&pn=${name}&am=${amount}&cu=INR`
+      try {
+        qrDataUrl = await QRCode.toDataURL(upiUri, {
+          errorCorrectionLevel: 'M',
+          margin: 1,
+          width: 200,
+          color: { dark: '#000000', light: '#ffffff' },
+        })
+      } catch {
+        qrDataUrl = undefined
+      }
+    }
+
+    return { inv: current, qrDataUrl }
+  }
+
+  const createPdfBlob = async () => {
+    const { inv, qrDataUrl } = await getResolvedInvoice()
+    return pdf(<InvoicePDFDocument invoice={inv} qrDataUrl={qrDataUrl} />).toBlob()
+  }
 
   const downloadBlob = (blob: Blob) => {
     const url = URL.createObjectURL(blob)

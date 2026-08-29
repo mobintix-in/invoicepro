@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { isSupabaseConfigured } from '@/lib/supabase/client'
 import { getMyProfile, updateMyProfile, getMySubscription, type ProfileInput } from '@/lib/account'
 import { isSubscriptionActive, type Subscription, type SubscriptionStatus } from '@/lib/subscription'
+import InvoiceThemePicker from '@/components/InvoiceThemePicker'
 
 const inputCls =
   'mt-1.5 block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'
@@ -26,6 +27,9 @@ const EMPTY: ProfileInput = {
   bankBranch: '',
   jurisdiction: '',
   defaultInvoiceNotes: '',
+  upiId: '',
+  invoiceTheme: 'indigo',
+  template: 'classic',
 }
 
 function formatDate(iso: string | null): string {
@@ -92,6 +96,9 @@ export default function ProfilePage() {
           bankBranch: p.bankBranch,
           jurisdiction: p.jurisdiction,
           defaultInvoiceNotes: p.defaultInvoiceNotes,
+          upiId: p.upiId,
+          invoiceTheme: p.invoiceTheme || 'indigo',
+          template: p.template || 'classic',
         })
         setEmail(p.email)
         setCreatedAt(p.createdAt)
@@ -132,7 +139,7 @@ export default function ProfilePage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Your business details here auto-fill the “From” side of every new invoice.
+          Your business details here auto-fill the "From" side of every new invoice.
         </p>
       </div>
 
@@ -157,7 +164,7 @@ export default function ProfilePage() {
         </Section>
 
         {/* Business details */}
-        <Section title="Business details" hint="Shown as the seller (“From”) on your invoices.">
+        <Section title="Business details" hint={'Shown as the seller (\u201cFrom\u201d) on your invoices.'}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label htmlFor="companyName" className={labelCls}>Company / Business Name</label>
@@ -190,8 +197,8 @@ export default function ProfilePage() {
           </div>
         </Section>
 
-        {/* Bank details */}
-        <Section title="Bank details" hint="Appears on invoices for payment.">
+        {/* Bank details + UPI */}
+        <Section title="Bank details & UPI" hint="Appears on invoices for payment. Add your UPI ID to auto-generate a QR code in the PDF.">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="bankAccountName" className={labelCls}>A/c Holder Name</label>
@@ -213,7 +220,39 @@ export default function ProfilePage() {
               <label htmlFor="bankBranch" className={labelCls}>Branch</label>
               <input id="bankBranch" type="text" value={form.bankBranch} onChange={(e) => set('bankBranch', e.target.value)} placeholder="MAHUVA" className={inputCls} />
             </div>
+            <div>
+              <label htmlFor="upiId" className={labelCls}>
+                UPI ID
+                <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-600">
+                  ✦ Auto QR in PDF
+                </span>
+              </label>
+              <input
+                id="upiId"
+                type="text"
+                value={form.upiId}
+                onChange={(e) => set('upiId', e.target.value)}
+                placeholder="yourname@paytm"
+                className={inputCls}
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                A scannable UPI QR code will appear in the payment section of every PDF you generate.
+              </p>
+            </div>
           </div>
+        </Section>
+
+        {/* Invoice Theme & Template */}
+        <Section
+          title="Invoice Layout Template & Style"
+          hint="Select your invoice structural design and accent color. Applied across all your invoices."
+        >
+          <InvoiceThemePicker
+            selectedTemplate={form.template || 'classic'}
+            selectedTheme={form.invoiceTheme || 'indigo'}
+            onTemplateChange={(tmpl) => set('template', tmpl)}
+            onThemeChange={(th) => set('invoiceTheme', th)}
+          />
         </Section>
 
         {/* Invoice defaults */}
@@ -236,6 +275,7 @@ export default function ProfilePage() {
             </p>
           </div>
         </Section>
+
         {error && <p className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-600">{error}</p>}
         {message && <p className="rounded-lg bg-green-50 px-3.5 py-2.5 text-sm text-green-700">{message}</p>}
 

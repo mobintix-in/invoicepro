@@ -6,6 +6,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import type { Invoice, InvoiceStatus } from '@/types'
 import { getInvoice, updateInvoice, deleteInvoice } from '@/lib/storage'
+import { getMyProfile, updateMyProfile } from '@/lib/account'
 
 const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false })
 const InvoicePDFPreview = dynamic(() => import('@/components/InvoicePDFPreview'), {
@@ -17,6 +18,23 @@ const InvoicePDFPreview = dynamic(() => import('@/components/InvoicePDFPreview')
   ),
 })
 
+const TEMPLATES = [
+  { id: 'classic', label: 'Classic GST' },
+  { id: 'modern', label: 'Modern Minimal' },
+  { id: 'corporate', label: 'Corporate Banner' },
+  { id: 'compact', label: 'Compact Ledger' },
+]
+
+const THEMES = [
+  { id: 'indigo', color: '#4F46E5' },
+  { id: 'violet', color: '#7C3AED' },
+  { id: 'blue', color: '#2563EB' },
+  { id: 'emerald', color: '#059669' },
+  { id: 'teal', color: '#0D9488' },
+  { id: 'rose', color: '#E11D48' },
+  { id: 'slate', color: '#334155' },
+]
+
 export default function InvoicePreview({ id }: { id: string }) {
   const router = useRouter()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
@@ -25,12 +43,23 @@ export default function InvoicePreview({ id }: { id: string }) {
 
   useEffect(() => {
     getInvoice(id)
-      .then(inv => {
+      .then(async (inv) => {
         if (!inv) {
           setMissing(true)
           return
         }
-        setInvoice(inv)
+
+        // Apply profile defaults for template & theme if missing
+        try {
+          const profile = await getMyProfile()
+          if (profile) {
+            if (!inv.template && profile.template) inv.template = profile.template
+            if (!inv.invoiceTheme && profile.invoiceTheme) inv.invoiceTheme = profile.invoiceTheme
+            if (!inv.upiId && profile.upiId) inv.upiId = profile.upiId
+          }
+        } catch {}
+
+        setInvoice({ ...inv })
       })
       .catch(() => {
         setLoadError('Could not load this invoice. Please check your connection and try again.')
@@ -53,6 +82,26 @@ export default function InvoicePreview({ id }: { id: string }) {
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
       </div>
     )
+  }
+
+  async function handleTemplateChange(newTemplate: string) {
+    if (!invoice) return
+    const updated = { ...invoice, template: newTemplate, updatedAt: new Date().toISOString() }
+    setInvoice(updated)
+    try {
+      await updateInvoice(updated)
+      if (typeof window !== 'undefined') localStorage.setItem('invoice_template', newTemplate)
+    } catch {}
+  }
+
+  async function handleThemeChange(newTheme: string) {
+    if (!invoice) return
+    const updated = { ...invoice, invoiceTheme: newTheme, updatedAt: new Date().toISOString() }
+    setInvoice(updated)
+    try {
+      await updateInvoice(updated)
+      if (typeof window !== 'undefined') localStorage.setItem('invoice_theme', newTheme)
+    } catch {}
   }
 
   async function updateStatus(newStatus: InvoiceStatus) {
@@ -99,10 +148,13 @@ export default function InvoicePreview({ id }: { id: string }) {
     }
   }
 
+  const currentTemplate = (invoice.template || 'classic').toLowerCase()
+  const currentTheme = invoice.invoiceTheme || 'indigo'
+
   return (
-    <div className="mx-auto max-w-4xl">
-      {/* Action bar – hidden when printing */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
+    <div className="mx-auto max-w-4xl space-y-4">
+      {/* Top Action Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link
           href="/"
           className="flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-800"
@@ -156,7 +208,49 @@ export default function InvoicePreview({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* On-screen preview = the exact PDF that downloads */}
+      {/* Live Structural Template & Accent Switcher Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2.5 shadow-xs print:hidden">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 mr-1.5">Template:</span>
+          {TEMPLATES.map((tmpl) => {
+            const active = currentTemplate === tmpl.id
+            return (
+              <button
+                key={tmpl.id}
+                type="button"
+                onClick={() => handleTemplateChange(tmpl.id)}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                  active
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {tmpl.label}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 mr-1">Color:</span>
+          {THEMES.map((th) => {
+            const active = currentTheme === th.id
+            return (
+              <button
+                key={th.id}
+                type="button"
+                onClick={() => handleThemeChange(th.id)}
+                className={`h-5 w-5 rounded-full transition-transform ${
+                  active ? 'scale-125 ring-2 ring-gray-900 ring-offset-1' : 'hover:scale-110'
+                }`}
+                style={{ backgroundColor: th.color }}
+              />
+            )
+          })}
+        </div>
+      </div>
+
+      {/* On-screen preview */}
       <InvoicePDFPreview invoice={invoice} />
     </div>
   )
