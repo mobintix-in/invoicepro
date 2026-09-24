@@ -1,9 +1,8 @@
 // Pure, isomorphic package (plan) types and helpers — no Supabase import, so
 // Pure, isomorphic package (plan) types and helpers — no Supabase import, so
-// this is safe in both server components (welcome page) and client components
+// this is safe in both server components and client components
 // (subscribe page, admin editor).
 //
-//   • Public reads → lib/packages-server.ts (server client)
 //   • Client reads + admin CRUD → lib/packages-admin.ts (browser client)
 
 export type Package = {

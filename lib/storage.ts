@@ -194,6 +194,15 @@ export async function updateInvoice(invoice: Invoice): Promise<void> {
   if (error) throw error
 }
 
+export async function saveInvoice(invoice: Invoice): Promise<void> {
+  const existing = await getInvoice(invoice.id)
+  if (existing) {
+    await updateInvoice(invoice)
+  } else {
+    await createInvoice(invoice)
+  }
+}
+
 export interface InvoiceQuota {
   limit: number | null
   used: number

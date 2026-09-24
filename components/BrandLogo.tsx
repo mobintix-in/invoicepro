@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-export default function BrandLogo({ href = '/welcome' }: { href?: string }) {
+export default function BrandLogo({ href = '/' }: { href?: string }) {
   const content = (
     <div className="group flex items-center gap-2.5 transition-transform duration-200 hover:scale-[1.02]">
       {/* Gradient App Icon with Glass Inner Glow */}

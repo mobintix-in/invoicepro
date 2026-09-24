@@ -50,7 +50,7 @@ export async function proxy(request: NextRequest) {
 
   // OAuth providers return here before a Supabase session exists. The callback
   // route must exchange the authorization code and set the session cookies;
-  // sending this request through the normal auth gate redirects it to /welcome
+  // sending this request through the normal auth gate redirects it to /login
   // before that exchange can happen.
   if (pathname === '/auth/callback') {
     return NextResponse.next()
@@ -135,22 +135,19 @@ export async function proxy(request: NextRequest) {
   }
 
   // Auth-gate pages: reachable without a session, but signed-in users are sent
-  // into the app (no reason to show them the marketing home or login screen).
-  const isAuthGatePage = pathname === '/welcome' || pathname === '/login'
-  // Open marketing pages (blog): readable by anyone, signed in or not.
-  const isMarketingPage = pathname === '/blog' || pathname.startsWith('/blog/')
+  // into the app (no reason to show them the login screen).
+  const isLoginPage = pathname === '/login'
 
   if (!isAuthenticated) {
-    if (isAuthGatePage || isMarketingPage) return response
-    // Send visitors to the marketing home page — the front door of the service.
-    return NextResponse.redirect(new URL('/welcome', request.url))
+    if (isLoginPage) return response
+    // Send unauthenticated visitors directly to the login screen.
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   // Authenticated from here on.
-  if (isAuthGatePage) {
+  if (isLoginPage) {
     return NextResponse.redirect(new URL('/', request.url))
   }
-  if (isMarketingPage) return response
 
   // Paywall: without an active subscription, dashboard, subscribe screen and
   // account profile remain reachable.
