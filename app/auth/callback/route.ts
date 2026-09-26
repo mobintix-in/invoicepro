@@ -84,19 +84,36 @@ export async function GET(request: Request) {
     const phone = user.user_metadata?.phone || ''
     const companyName = user.user_metadata?.company_name || ''
 
+    // Fetch existing profile in DB so we don't overwrite if previously filled
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('phone, company_name, full_name')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const finalPhone = existingProfile?.phone || phone
+    const finalCompanyName = existingProfile?.company_name || companyName
+    const finalFullName = existingProfile?.full_name || fullName
+
     const { error: profileError } = await supabase.from('profiles').upsert(
       {
         id: user.id,
         email: user.email ?? '',
-        full_name: fullName,
-        phone,
-        company_name: companyName,
+        full_name: finalFullName,
+        phone: finalPhone,
+        company_name: finalCompanyName,
       },
       { onConflict: 'id' }
     )
 
     if (profileError) {
       console.error('Failed to ensure OAuth user profile:', profileError)
+    }
+
+    // If contact number or company details are missing, mandate profile setup first
+    if (!finalPhone || !finalCompanyName) {
+      response.headers.set('location', `${publicBase}/profile?setup=1`)
+      return response
     }
   }
 
