@@ -79,10 +79,12 @@ function LoginForm() {
           router.refresh();
         }
       } else {
+        const origin = window.location.origin;
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            emailRedirectTo: `${origin}/auth/callback`,
             // Stored as user metadata; a DB trigger copies it into `profiles`.
             data: {
               full_name: fullName.trim(),

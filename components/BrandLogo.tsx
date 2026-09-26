@@ -20,13 +20,10 @@ export default function BrandLogo({ href = '/' }: { href?: string }) {
         </svg>
       </div>
 
-      {/* Brand Wordmark with Accent Badge */}
+      {/* Brand Wordmark */}
       <div className="flex items-center gap-1.5">
         <span className="text-xl font-extrabold tracking-tight text-slate-900">
           Invoice<span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">Pro</span>
-        </span>
-        <span className="rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-indigo-700">
-          GST
         </span>
       </div>
     </div>

@@ -21,13 +21,20 @@ function safeNextPath(value: string | null): string {
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const errorDescription = searchParams.get('error_description') || searchParams.get('error')
   const next = safeNextPath(searchParams.get('next'))
   const publicBase = publicBaseUrl(origin)
-  const loginError =
-    '/login?error=Google%20authentication%20failed.%20Please%20try%20again.'
+
+  if (errorDescription) {
+    return NextResponse.redirect(
+      `${publicBase}/login?error=${encodeURIComponent(errorDescription)}`
+    )
+  }
 
   if (!code) {
-    return NextResponse.redirect(`${publicBase}${loginError}`)
+    return NextResponse.redirect(
+      `${publicBase}/login?error=Authentication%20failed.%20Please%20try%20again.`
+    )
   }
 
   const cookieStore = await cookies()
@@ -60,8 +67,11 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
-    console.error('Google OAuth exchange code error:', error)
-    response.headers.set('location', `${publicBase}${loginError}`)
+    console.error('Exchange code error:', error)
+    response.headers.set(
+      'location',
+      `${publicBase}/login?error=${encodeURIComponent(error.message)}`
+    )
     return response
   }
 
