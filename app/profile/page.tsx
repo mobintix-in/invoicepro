@@ -403,29 +403,34 @@ function ProfileContent() {
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                   {form.logoUrl ? (
-                    <div className="relative flex h-20 w-28 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white p-2 shadow-xs">
+                    <div className="relative flex h-20 w-20 aspect-square shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white p-2 shadow-xs">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={form.logoUrl}
                         alt="Business Logo"
-                        className="max-h-full max-w-full object-contain"
+                        className="max-h-full max-w-full aspect-square object-contain"
                       />
                     </div>
                   ) : (
-                    <div className="flex h-20 w-28 shrink-0 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400">
-                      <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <div className="flex h-20 w-20 aspect-square shrink-0 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400">
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                       </svg>
-                      <span className="mt-1 text-[10px] font-bold">No logo</span>
+                      <span className="mt-1 text-[10px] font-bold">1:1 Logo</span>
                     </div>
                   )}
 
                   <div>
-                    <div className="text-sm font-bold text-slate-900">
-                      {form.logoUrl ? "Company Logo Uploaded" : "Upload Your Company Logo"}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-slate-900">
+                        {form.logoUrl ? "Company Logo Uploaded" : "Upload Your Company Logo"}
+                      </span>
+                      <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200/60">
+                        1:1 Square
+                      </span>
                     </div>
                     <p className="mt-0.5 text-xs text-slate-500 max-w-sm">
-                      Recommended: High-resolution PNG or JPG with transparent or light background. Appears in invoice headers.
+                      Recommended: 1:1 square PNG or JPG with transparent or light background. Appears in invoice headers.
                     </p>
                   </div>
                 </div>

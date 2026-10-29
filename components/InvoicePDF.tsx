@@ -123,14 +123,22 @@ function StandardTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
       >
         <View style={{ flex: 1, paddingRight: 10 }}>
           {invoice.from.logoUrl ? (
-            <Image
-              src={invoice.from.logoUrl}
-              style={{ width: 64, height: 44, objectFit: "contain", marginBottom: 6 }}
-            />
-          ) : null}
-          <Text style={[styles.bold, { fontSize: 18, color: "#0f172a" }]}>
-            {invoice.from.name}
-          </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+              <Image
+                src={invoice.from.logoUrl}
+                style={{ width: 44, height: 44, objectFit: "contain", marginRight: 8 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.bold, { fontSize: 16, color: "#0f172a" }]}>
+                  {invoice.from.name}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={[styles.bold, { fontSize: 18, color: "#0f172a" }]}>
+              {invoice.from.name}
+            </Text>
+          )}
           {invoice.from.address ? (
             <Text style={{ fontSize: 8, color: "#64748b", marginTop: 3 }}>
               {invoice.from.address}
@@ -624,14 +632,22 @@ function JapaneseTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
       >
         <View style={{ flex: 1, paddingRight: 10 }}>
           {invoice.from.logoUrl ? (
-            <Image
-              src={invoice.from.logoUrl}
-              style={{ width: 64, height: 44, objectFit: "contain", marginBottom: 6 }}
-            />
-          ) : null}
-          <Text style={[styles.bold, { fontSize: 18, color: accent }]}>
-            {invoice.from.name}
-          </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+              <Image
+                src={invoice.from.logoUrl}
+                style={{ width: 44, height: 44, objectFit: "contain", marginRight: 8 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.bold, { fontSize: 16, color: accent }]}>
+                  {invoice.from.name}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={[styles.bold, { fontSize: 18, color: accent }]}>
+              {invoice.from.name}
+            </Text>
+          )}
           {invoice.from.address ? (
             <Text style={{ fontSize: 8, color: "#475569", marginTop: 3 }}>
               {invoice.from.address}
@@ -934,7 +950,7 @@ function ExecutiveTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         {invoice.from.logoUrl ? (
           <Image
             src={invoice.from.logoUrl}
-            style={{ width: 64, height: 44, objectFit: "contain", marginBottom: 6 }}
+            style={{ width: 44, height: 44, objectFit: "contain", marginBottom: 6 }}
           />
         ) : null}
         <Text
@@ -1286,21 +1302,37 @@ function TextileTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
       >
         <View style={{ flex: 1 }}>
           {invoice.from.logoUrl ? (
-            <Image
-              src={invoice.from.logoUrl}
-              style={{ width: 64, height: 44, objectFit: "contain", marginBottom: 4 }}
-            />
-          ) : null}
-          <Text style={[styles.bold, { fontSize: 13, color: accent }]}>
-            {invoice.from.name}
-          </Text>
-          <Text style={{ fontSize: 8, marginTop: 2 }}>
-            {invoice.from.address} | Ph: {invoice.from.phone}
-          </Text>
-          <Text style={{ fontSize: 8, marginTop: 1 }}>
-            GSTIN: <Text style={styles.bold}>{invoice.from.gstin}</Text> |
-            State: {invoice.from.stateName}
-          </Text>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3 }}>
+              <Image
+                src={invoice.from.logoUrl}
+                style={{ width: 40, height: 40, objectFit: "contain", marginRight: 8 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.bold, { fontSize: 13, color: accent }]}>
+                  {invoice.from.name}
+                </Text>
+                <Text style={{ fontSize: 8, marginTop: 2 }}>
+                  {invoice.from.address} | Ph: {invoice.from.phone}
+                </Text>
+                <Text style={{ fontSize: 8, marginTop: 1 }}>
+                  GSTIN: <Text style={styles.bold}>{invoice.from.gstin}</Text> | State: {invoice.from.stateName}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <>
+              <Text style={[styles.bold, { fontSize: 13, color: accent }]}>
+                {invoice.from.name}
+              </Text>
+              <Text style={{ fontSize: 8, marginTop: 2 }}>
+                {invoice.from.address} | Ph: {invoice.from.phone}
+              </Text>
+              <Text style={{ fontSize: 8, marginTop: 1 }}>
+                GSTIN: <Text style={styles.bold}>{invoice.from.gstin}</Text> |
+                State: {invoice.from.stateName}
+              </Text>
+            </>
+          )}
         </View>
         <View style={{ alignItems: "flex-end" }}>
           <Text style={[styles.bold, { fontSize: 11, color: accent }]}>
@@ -1554,7 +1586,7 @@ function RetailTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         {invoice.from.logoUrl ? (
           <Image
             src={invoice.from.logoUrl}
-            style={{ width: 64, height: 44, objectFit: "contain", marginBottom: 6 }}
+            style={{ width: 44, height: 44, objectFit: "contain", marginBottom: 6 }}
           />
         ) : null}
         <Text style={[styles.bold, { fontSize: 18, color: accent }]}>
@@ -1812,31 +1844,58 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
           ]}
         >
           {invoice.from.logoUrl ? (
-            <Image
-              src={invoice.from.logoUrl}
-              style={{ width: 64, height: 44, objectFit: "contain", marginBottom: 4 }}
-            />
-          ) : null}
-          <Text style={[styles.bold, { fontSize: 12, color: accent }]}>
-            {invoice.from.name || "SELLER NAME"}
-          </Text>
-          {invoice.from.address ? (
-            <Text style={styles.mt2}>{invoice.from.address}</Text>
-          ) : null}
-          {invoice.from.phone ? <Text>Ph: {invoice.from.phone}</Text> : null}
-          {invoice.from.gstin ? (
-            <Text style={styles.mt2}>
-              GSTIN/UIN: <Text style={styles.bold}>{invoice.from.gstin}</Text>
-            </Text>
-          ) : null}
-          {invoice.from.stateName ? (
-            <Text>
-              State Name : {invoice.from.stateName}
-              {invoice.from.stateCode
-                ? `, Code : ${invoice.from.stateCode}`
-                : " "}
-            </Text>
-          ) : null}
+            <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+              <Image
+                src={invoice.from.logoUrl}
+                style={{ width: 44, height: 44, objectFit: "contain", marginRight: 8 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.bold, { fontSize: 12, color: accent }]}>
+                  {invoice.from.name || "SELLER NAME"}
+                </Text>
+                {invoice.from.address ? (
+                  <Text style={styles.mt2}>{invoice.from.address}</Text>
+                ) : null}
+                {invoice.from.phone ? <Text>Ph: {invoice.from.phone}</Text> : null}
+                {invoice.from.gstin ? (
+                  <Text style={styles.mt2}>
+                    GSTIN/UIN: <Text style={styles.bold}>{invoice.from.gstin}</Text>
+                  </Text>
+                ) : null}
+                {invoice.from.stateName ? (
+                  <Text>
+                    State Name : {invoice.from.stateName}
+                    {invoice.from.stateCode
+                      ? `, Code : ${invoice.from.stateCode}`
+                      : " "}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          ) : (
+            <>
+              <Text style={[styles.bold, { fontSize: 12, color: accent }]}>
+                {invoice.from.name || "SELLER NAME"}
+              </Text>
+              {invoice.from.address ? (
+                <Text style={styles.mt2}>{invoice.from.address}</Text>
+              ) : null}
+              {invoice.from.phone ? <Text>Ph: {invoice.from.phone}</Text> : null}
+              {invoice.from.gstin ? (
+                <Text style={styles.mt2}>
+                  GSTIN/UIN: <Text style={styles.bold}>{invoice.from.gstin}</Text>
+                </Text>
+              ) : null}
+              {invoice.from.stateName ? (
+                <Text>
+                  State Name : {invoice.from.stateName}
+                  {invoice.from.stateCode
+                    ? `, Code : ${invoice.from.stateCode}`
+                    : " "}
+                </Text>
+              ) : null}
+            </>
+          )}
         </View>
 
         <View style={{ flex: 4 }}>

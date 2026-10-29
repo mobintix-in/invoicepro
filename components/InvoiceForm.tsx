@@ -1076,20 +1076,23 @@ function PartySection({
         {isSeller && (
           <div className="flex items-center gap-3.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
             {party.logoUrl ? (
-              <div className="relative flex h-14 w-20 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-1 shadow-xs">
+              <div className="relative flex h-14 w-14 aspect-square shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-1 shadow-xs">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={party.logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
+                <img src={party.logoUrl} alt="Logo" className="max-h-full max-w-full aspect-square object-contain" />
               </div>
             ) : (
-              <div className="flex h-14 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 bg-white text-slate-400">
+              <div className="flex h-14 w-14 aspect-square shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 bg-white text-slate-400">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                 </svg>
-                <span className="text-[9px] font-bold text-slate-400">No logo</span>
+                <span className="text-[9px] font-bold text-slate-400">1:1 Logo</span>
               </div>
             )}
             <div className="flex-1">
-              <div className="text-xs font-bold text-slate-800">Business Logo</div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-800">Business Logo</span>
+                <span className="rounded bg-slate-200/70 px-1 py-0.2 text-[9px] font-semibold text-slate-600">1:1</span>
+              </div>
               <div className="text-[11px] text-slate-500">Printed on invoice header</div>
               <div className="mt-1 flex items-center gap-2">
                 <label className="cursor-pointer rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-indigo-600 border border-slate-200 shadow-xs hover:bg-slate-50">

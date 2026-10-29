@@ -76,8 +76,10 @@ export default function Sidebar() {
   ]
 
   const linkClass = (active: boolean) =>
-    `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-      active ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+    `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-all outline-none focus:outline-none ${
+      active
+        ? 'bg-indigo-50/90 text-indigo-700 font-bold shadow-xs ring-1 ring-indigo-200/50'
+        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-medium'
     }`
 
   return (
@@ -136,7 +138,7 @@ export default function Sidebar() {
           <Link
             href="/invoices/new"
             onClick={() => setOpen(false)}
-            className="mb-2 flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+            className="mb-3 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-indigo-600/25 transition-all hover:bg-indigo-700 hover:shadow-md outline-none focus:outline-none"
           >
             <Icon d={ICON.plus} />
             New Invoice

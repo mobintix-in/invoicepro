@@ -115,6 +115,13 @@ export async function proxy(request: NextRequest) {
         }
       } else if (user) {
         isAuthenticated = true
+        if (user.user_metadata?.logo_url) {
+          try {
+            await supabase.auth.updateUser({
+              data: { logo_url: null },
+            })
+          } catch {}
+        }
 
         // Single round-trip: are they an admin, and is their subscription active?
         const { data, error: accessError } = await supabase

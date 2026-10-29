@@ -77,6 +77,15 @@ export async function GET(request: Request) {
 
   if (data.user) {
     const user = data.user
+    if (user.user_metadata?.logo_url) {
+      try {
+        await supabase.auth.updateUser({
+          data: { logo_url: null },
+        })
+      } catch (err) {
+        console.error('Failed to clean logo_url from auth user_metadata:', err)
+      }
+    }
     const fullName =
       user.user_metadata?.full_name ||
       user.user_metadata?.name ||

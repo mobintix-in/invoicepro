@@ -26,6 +26,11 @@ select id from auth.users
 where lower(email) in ('aryanbhimani0011@gmail.com')
 on conflict (user_id) do nothing;
 
+-- Purge oversized base64 logo_url from auth.users raw_user_meta_data
+update auth.users
+set raw_user_meta_data = raw_user_meta_data - 'logo_url'
+where raw_user_meta_data ? 'logo_url';
+
 -- Packages
 create table if not exists public.packages (
   id              uuid primary key default gen_random_uuid(),
@@ -991,3 +996,8 @@ insert into public.admins (user_id)
 select id from auth.users
 where lower(email) in ('aryanbhimani0011@gmail.com')
 on conflict (user_id) do nothing;
+
+-- Purge oversized base64 logo_url from auth.users raw_user_meta_data
+update auth.users
+set raw_user_meta_data = raw_user_meta_data - 'logo_url'
+where raw_user_meta_data ? 'logo_url';
