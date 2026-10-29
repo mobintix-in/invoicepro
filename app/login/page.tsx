@@ -98,7 +98,7 @@ function LoginForm() {
         } else if (data.session) {
           // Email confirmation is disabled — the user is already signed in.
           // New accounts have no active subscription, so land on the paywall.
-          router.push("/subscribe");
+          router.push("/profile?tab=subscription");
           router.refresh();
         } else {
           setMessage(

@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Invoice, LineItem, Party, InvoiceStatus } from '@/types'
+import type { Invoice, LineItem, Party, InvoiceStatus, InvoiceType } from '@/types'
+import { INVOICE_TYPES, getInvoiceTypeDefinition } from '@/types'
 import { createInvoice, updateInvoice, nextInvoiceNumber, getInvoiceQuota, type InvoiceQuota } from '@/lib/storage'
 import { getMyProfile } from '@/lib/account'
 import { listClients, saveClient, type Client } from '@/lib/clients'
-import { listFabricLots, totalFabricMeters, type FabricLot } from '@/lib/fabric-production'
 import { parseGstin, lookupGstin } from '@/lib/gstin'
 import { generateId, today, daysFromNow, formatCurrency, roundMoney } from '@/lib/utils'
 
@@ -38,58 +38,18 @@ function databaseErrorMessage(error: unknown): string {
 
 const defaultParty: Party = { name: '', email: '', address: '', phone: '', gstin: '', stateName: '', stateCode: '' }
 
-function fabricDescription(lot: FabricLot, rollNumber: string) {
-  return [
-    lot.category || 'Fabric',
-    lot.quality,
-    lot.shade ? `Shade ${lot.shade}` : '',
-    lot.variation,
-    lot.construction ? `Construction ${lot.construction}` : '',
-    lot.widthInches ? `${lot.widthInches}" width` : '',
-    lot.gsm ? `${lot.gsm} GSM` : '',
-    lot.lotNumber ? `Lot ${lot.lotNumber}` : '',
-    `Roll/Thaan ${rollNumber || '-'}`,
-  ]
-    .filter(Boolean)
-    .join(' | ')
-}
-
-function fabricLineItems(lot: FabricLot, rate = lot.ratePerMeter): LineItem[] {
-  return lot.rolls
-    .filter((roll) => Number.isFinite(roll.meters) && roll.meters > 0)
-    .map((roll) => ({
-      id: generateId(),
-      description: fabricDescription(lot, roll.rollNumber),
-      quantity: roll.meters,
-      rate,
-      amount: roundMoney(roll.meters * rate),
-      hsnCode: lot.hsnCode,
-      unit: 'Metres',
-      gstRate: lot.gstRate,
-    }))
-}
-
-function isBlankLineItem(item: LineItem) {
-  return (
-    !item.description.trim() &&
-    !item.hsnCode?.trim() &&
-    item.rate === 0 &&
-    item.amount === 0
-  )
-}
-
 interface Props {
   mode: 'new' | 'edit'
   initialData?: Invoice
-  fabricLotId?: string
 }
 
-export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
+export default function InvoiceForm({ mode, initialData }: Props) {
   const router = useRouter()
 
   // Edit mode mounts with initialData already loaded, so initialize from it
   // directly (lazily). New mode starts blank and is pre-filled from the profile
   // in the effect below.
+  const [invoiceType, setInvoiceType] = useState<InvoiceType>(() => initialData?.invoiceType ?? 'tax_invoice')
   const [invoiceNumber, setInvoiceNumber] = useState(() => initialData?.invoiceNumber ?? '')
   const [status, setStatus] = useState<InvoiceStatus>(() => initialData?.status ?? 'draft')
   const [issueDate, setIssueDate] = useState(() => initialData?.issueDate ?? today())
@@ -99,8 +59,9 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
   const [lineItems, setLineItems] = useState<LineItem[]>(() => {
     if (initialData?.lineItems && initialData.lineItems.length > 0) {
       return initialData.lineItems.map((item, idx) => {
+        const raw = item as unknown as Record<string, unknown>
         const quantity = Number(item.quantity ?? 1) || 0
-        let rate = Number(item.rate ?? (item as any).unit_price ?? (item as any).unitPrice ?? (item as any).price ?? 0) || 0
+        let rate = Number(item.rate ?? raw.unit_price ?? raw.unitPrice ?? raw.price ?? 0) || 0
         let amount = Number(item.amount)
         if (!Number.isFinite(amount) || (amount === 0 && rate > 0)) {
           amount = roundMoney(quantity * rate)
@@ -114,9 +75,9 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
           quantity,
           rate,
           amount: Number.isFinite(amount) ? amount : 0,
-          hsnCode: item.hsnCode ?? (item as any).hsn_code ?? '',
+          hsnCode: item.hsnCode ?? (raw.hsn_code ? String(raw.hsn_code) : ''),
           unit: item.unit ?? 'Units',
-          gstRate: item.gstRate != null ? Number(item.gstRate) : ((item as any).gst_rate != null ? Number((item as any).gst_rate) : undefined),
+          gstRate: item.gstRate != null ? Number(item.gstRate) : (raw.gst_rate != null ? Number(raw.gst_rate) : undefined),
         }
       })
     }
@@ -140,10 +101,6 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
   const [invoiceTheme, setInvoiceTheme] = useState(() => initialData?.invoiceTheme ?? 'indigo')
   const [template, setTemplate] = useState(() => initialData?.template ?? 'classic')
   const [clients, setClients] = useState<Client[]>([])
-  const [fabricLots, setFabricLots] = useState<FabricLot[]>([])
-  const [importedFabricLot, setImportedFabricLot] = useState<FabricLot | null>(null)
-  const [importedFabricItemIds, setImportedFabricItemIds] = useState<string[]>([])
-  const [fabricRate, setFabricRate] = useState(0)
   const [savingClient, setSavingClient] = useState(false)
   const [quota, setQuota] = useState<InvoiceQuota | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -164,19 +121,16 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
     ),
   )
   const total = roundMoney(subtotal + tax)
-  const importedFabricIds = new Set(importedFabricItemIds)
-  const importedFabricItems = lineItems.filter((item) => importedFabricIds.has(item.id))
-  const importedFabricMeters = importedFabricItems.reduce((sum, item) => sum + item.quantity, 0)
-  const importedFabricSubtotal = roundMoney(
-    importedFabricItems.reduce((sum, item) => sum + item.amount, 0),
-  )
-  const importedFabricTax = roundMoney(
-    importedFabricItems.reduce(
-      (sum, item) => sum + item.amount * ((item.gstRate ?? taxRate) / 100),
-      0,
-    ),
-  )
-  const importedFabricAmount = roundMoney(importedFabricSubtotal + importedFabricTax)
+  const currentTypeDefinition = getInvoiceTypeDefinition(invoiceType)
+
+  function handleInvoiceTypeChange(newType: InvoiceType) {
+    setInvoiceType(newType)
+    if (newType === 'bill_of_supply' || newType === 'composition' || newType === 'delivery_challan') {
+      if (taxRate > 0) {
+        setTaxRate(0)
+      }
+    }
+  }
 
   // Saved clients power the "Bill To" quick-picker.
   useEffect(() => {
@@ -184,54 +138,6 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
       .then(setClients)
       .catch(() => setLoadError('Could not load your saved clients.'))
   }, [])
-
-  useEffect(() => {
-    if (mode !== 'new') return
-
-    let cancelled = false
-    listFabricLots()
-      .then((lots) => {
-        if (cancelled) return
-        setFabricLots(lots)
-        if (!fabricLotId) return
-
-        const lot = lots.find((item) => item.id === fabricLotId)
-        if (!lot) {
-          setLoadError('The selected fabric lot could not be found.')
-          return
-        }
-
-        const items = fabricLineItems(lot)
-        if (items.length === 0) {
-          setLoadError('The selected fabric lot has no metre entries to invoice.')
-          return
-        }
-
-        setImportedFabricLot(lot)
-        setImportedFabricItemIds(items.map((item) => item.id))
-        setFabricRate(lot.ratePerMeter)
-        setLineItems((current) =>
-          current.length === 1 && isBlankLineItem(current[0])
-            ? items
-            : [...current, ...items],
-        )
-        setTo((current) =>
-          current.name.trim()
-            ? current
-            : { ...current, name: lot.partyName || lot.productionCompany },
-        )
-        setDeliveryNote((current) => current || lot.challanNumber)
-      })
-      .catch((error) => {
-        if (!cancelled && fabricLotId) {
-          setLoadError(`Could not import the fabric lot: ${databaseErrorMessage(error)}`)
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [mode, fabricLotId])
 
   // Fill every "Bill To" field from a saved client in one click.
   function applyClient(clientId: string) {
@@ -246,54 +152,6 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
       stateName: c.stateName,
       stateCode: c.stateCode,
     })
-  }
-
-  function importFabricLot(lotId: string) {
-    const lot = fabricLots.find((item) => item.id === lotId)
-    if (!lot) return
-
-    const items = fabricLineItems(lot)
-    if (items.length === 0) {
-      setLoadError('This fabric lot has no metre entries to invoice.')
-      return
-    }
-
-    const previousIds = new Set(importedFabricItemIds)
-    setLineItems((current) => {
-      const withoutPreviousImport = current.filter((item) => !previousIds.has(item.id))
-      const manualItems =
-        withoutPreviousImport.length === 1 && isBlankLineItem(withoutPreviousImport[0])
-          ? []
-          : withoutPreviousImport
-      return [...manualItems, ...items]
-    })
-    setImportedFabricLot(lot)
-    setImportedFabricItemIds(items.map((item) => item.id))
-    setFabricRate(lot.ratePerMeter)
-    setTo((current) =>
-      current.name.trim()
-        ? current
-        : { ...current, name: lot.partyName || lot.productionCompany },
-    )
-    setDeliveryNote((current) => current || lot.challanNumber)
-    setLoadError(null)
-  }
-
-  function updateFabricRate(rawValue: string) {
-    const rate = Math.max(0, parseFloat(rawValue) || 0)
-    const itemIds = new Set(importedFabricItemIds)
-    setFabricRate(rate)
-    setLineItems((current) =>
-      current.map((item) =>
-        itemIds.has(item.id)
-          ? {
-              ...item,
-              rate,
-              amount: roundMoney(item.quantity * rate),
-            }
-          : item,
-      ),
-    )
   }
 
   // Save whatever is currently typed in "Bill To" as a reusable client.
@@ -346,6 +204,7 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
           gstin: p.gstin,
           stateName: p.stateName,
           stateCode: p.stateCode,
+          logoUrl: p.logoUrl || '',
         })
         setSellerPan(p.pan)
         setBankAccountName(p.bankAccountName)
@@ -404,6 +263,7 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
     const invoice: Invoice = {
       id: initialData?.id ?? generateId(),
       invoiceNumber,
+      invoiceType,
       status,
       issueDate,
       dueDate,
@@ -443,7 +303,7 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
       console.warn('Failed to save invoice:', message)
       if (message.includes('INVOICE_LIMIT_REACHED')) {
         alert("You've reached your plan's monthly invoice limit. Upgrade your plan to create more.")
-        router.push('/subscribe')
+        router.push('/profile?tab=subscription')
       } else if (message.includes('Not authenticated')) {
         alert('You must be logged in to save an invoice.')
         router.push('/login')
@@ -520,7 +380,7 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
           </span>
           {limitReached && (
             <button
-              onClick={() => router.push('/subscribe')}
+              onClick={() => router.push('/profile?tab=subscription')}
               className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-700"
             >
               Upgrade plan
@@ -532,46 +392,77 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
       <div className="space-y-6">
         {/* Invoice details */}
         <Section title="Invoice Details">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <label className={labelCls}>Invoice Number</label>
-              <input
-                type="text"
-                value={invoiceNumber}
-                onChange={e => setInvoiceNumber(e.target.value)}
-                className={inputCls}
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <div>
+                <label className={labelCls}>Invoice Type</label>
+                <select
+                  value={invoiceType}
+                  onChange={e => handleInvoiceTypeChange(e.target.value as InvoiceType)}
+                  className={`${inputCls} font-semibold text-indigo-900 border-indigo-200 bg-indigo-50/30 focus:border-indigo-600`}
+                >
+                  {INVOICE_TYPES.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>{currentTypeDefinition.numberLabel}</label>
+                <input
+                  type="text"
+                  value={invoiceNumber}
+                  onChange={e => setInvoiceNumber(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Status</label>
+                <select
+                  value={status}
+                  onChange={e => setStatus(e.target.value as InvoiceStatus)}
+                  className={inputCls}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="sent">Sent</option>
+                  <option value="paid">Paid</option>
+                  <option value="overdue">Overdue</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Issue Date</label>
+                <input
+                  type="date"
+                  value={issueDate}
+                  onChange={e => setIssueDate(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Due Date</label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
             </div>
-            <div>
-              <label className={labelCls}>Status</label>
-              <select
-                value={status}
-                onChange={e => setStatus(e.target.value as InvoiceStatus)}
-                className={inputCls}
-              >
-                <option value="draft">Draft</option>
-                <option value="sent">Sent</option>
-                <option value="paid">Paid</option>
-                <option value="overdue">Overdue</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Issue Date</label>
-              <input
-                type="date"
-                value={issueDate}
-                onChange={e => setIssueDate(e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Due Date</label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-                className={inputCls}
-              />
+
+            {/* Invoice type description pill / helper note */}
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50/70 px-3.5 py-2 text-xs text-gray-600">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold ${currentTypeDefinition.badgeClass}`}>
+                  {currentTypeDefinition.label}
+                </span>
+                <span className="text-gray-700">{currentTypeDefinition.description}</span>
+              </div>
+              {currentTypeDefinition.subtitle && (
+                <span className="font-medium text-amber-700">
+                  {currentTypeDefinition.subtitle}
+                </span>
+              )}
             </div>
           </div>
         </Section>
@@ -644,65 +535,6 @@ export default function InvoiceForm({ mode, initialData, fabricLotId }: Props) {
 
         {/* Line items */}
         <Section title="Line Items">
-          {mode === 'new' && fabricLots.length > 0 && (
-            <div className="mb-5 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4">
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px_180px] lg:items-end">
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-indigo-700">
-                    Import from Fabric Production
-                  </label>
-                  <select
-                    value={importedFabricLot?.id ?? ''}
-                    onChange={(event) => importFabricLot(event.target.value)}
-                    className={inputCls}
-                  >
-                    <option value="">Select a fabric lot...</option>
-                    {fabricLots.map((lot) => (
-                      <option key={lot.id} value={lot.id}>
-                        {[lot.lotNumber || 'No lot', lot.category, lot.quality, `${totalFabricMeters(lot)} m`]
-                          .filter(Boolean)
-                          .join(' | ')}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {importedFabricLot && (
-                  <>
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-indigo-700">
-                        Rate per metre (₹)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={fabricRate || ''}
-                        onChange={(event) => updateFabricRate(event.target.value)}
-                        placeholder="Enter metre rate"
-                        className={`${inputCls} text-right`}
-                      />
-                    </div>
-                    <div className="rounded-lg bg-white px-4 py-2.5 ring-1 ring-indigo-100">
-                      <p className="text-xs font-medium text-gray-500">
-                        {importedFabricItems.length} rolls · {importedFabricMeters.toLocaleString('en-IN')} metres
-                      </p>
-                      <p className="mt-0.5 text-lg font-bold text-gray-900">
-                        {formatCurrency(importedFabricAmount)}
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
-              {importedFabricLot && (
-                <p className="mt-3 text-xs text-indigo-700">
-                  HSN {importedFabricLot.hsnCode || 'not set'} · {importedFabricLot.gstRate}% GST · total includes GST.
-                  Every roll/thaan is added below as a separate metre-wise line item, and changing the common rate updates the full invoice.
-                </p>
-              )}
-            </div>
-          )}
-
           {/* Desktop table */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full min-w-[700px]">
@@ -1235,11 +1067,62 @@ function PartySection({
 
   const parsed = parseGstin(party.gstin || '')
   const gstinEntered = (party.gstin || '').length > 0
+  const isSeller = title.toLowerCase().includes('from')
 
   return (
     <Section title={title}>
       <div className="space-y-3">
         {beforeFields}
+        {isSeller && (
+          <div className="flex items-center gap-3.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+            {party.logoUrl ? (
+              <div className="relative flex h-14 w-20 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-1 shadow-xs">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={party.logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
+              </div>
+            ) : (
+              <div className="flex h-14 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-200 bg-white text-slate-400">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+                <span className="text-[9px] font-bold text-slate-400">No logo</span>
+              </div>
+            )}
+            <div className="flex-1">
+              <div className="text-xs font-bold text-slate-800">Business Logo</div>
+              <div className="text-[11px] text-slate-500">Printed on invoice header</div>
+              <div className="mt-1 flex items-center gap-2">
+                <label className="cursor-pointer rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-indigo-600 border border-slate-200 shadow-xs hover:bg-slate-50">
+                  {party.logoUrl ? 'Change' : 'Upload Logo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      const reader = new FileReader()
+                      reader.onload = (evt) => {
+                        const dataUrl = evt.target?.result as string
+                        if (dataUrl) onChange({ ...party, logoUrl: dataUrl })
+                      }
+                      reader.readAsDataURL(file)
+                    }}
+                  />
+                </label>
+                {party.logoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => onChange({ ...party, logoUrl: undefined })}
+                    className="text-xs font-semibold text-red-600 hover:text-red-700"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         <div>
           <label className={labelCls}>Name / Company</label>
           <input

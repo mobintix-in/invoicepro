@@ -153,7 +153,7 @@ export async function proxy(request: NextRequest) {
   // account profile remain reachable.
   const unpaidAllowed = pathname === '/' || pathname === '/subscribe' || pathname === '/profile'
   if (!hasActiveSubscription && !unpaidAllowed) {
-    return NextResponse.redirect(new URL('/subscribe', request.url))
+    return NextResponse.redirect(new URL('/profile?tab=subscription', request.url))
   }
 
   return response

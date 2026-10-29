@@ -66,6 +66,7 @@ export interface ProfileInput {
   upiId: string
   invoiceTheme: string
   template: string
+  logoUrl?: string
 }
 
 export interface Profile extends ProfileInput {
@@ -178,11 +179,17 @@ export async function getMyProfile(): Promise<Profile | null> {
     parsedTemplate = row.template
   }
 
+  let parsedLogo = ''
+  if (user?.user_metadata?.logo_url) {
+    parsedLogo = user.user_metadata.logo_url
+  }
   if (typeof window !== 'undefined') {
     const localTmpl = localStorage.getItem('invoice_template')
     if (localTmpl) parsedTemplate = localTmpl
     const localTh = localStorage.getItem('invoice_theme')
     if (localTh) parsedTheme = localTh
+    const localLogo = localStorage.getItem('business_logo')
+    if (localLogo) parsedLogo = localLogo
   }
 
   return {
@@ -207,6 +214,7 @@ export async function getMyProfile(): Promise<Profile | null> {
     upiId: row.upi_id ?? '',
     invoiceTheme: parsedTheme,
     template: parsedTemplate,
+    logoUrl: parsedLogo,
   }
 }
 
@@ -218,7 +226,18 @@ export async function updateMyProfile(input: ProfileInput): Promise<void> {
   if (typeof window !== 'undefined') {
     localStorage.setItem('invoice_template', input.template || 'classic')
     localStorage.setItem('invoice_theme', input.invoiceTheme || 'indigo')
+    if (input.logoUrl !== undefined) {
+      localStorage.setItem('business_logo', input.logoUrl)
+    }
   }
+
+  try {
+    if (input.logoUrl !== undefined) {
+      await createClient().auth.updateUser({
+        data: { logo_url: input.logoUrl }
+      })
+    }
+  } catch {}
 
   const encodedTheme = `${input.template || 'classic'}:${input.invoiceTheme || 'indigo'}`
 

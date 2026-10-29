@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/client'
-import type { Invoice } from '@/types'
+import type { Invoice, InvoiceType } from '@/types'
+import { getInvoiceTypeDefinition } from '@/types'
 
 type DbRow = {
   id: string
   user_id: string
   invoice_number: string
+  invoice_type?: string
   status: string
   issue_date: string
   due_date: string
@@ -41,7 +43,8 @@ function normalizeParty(raw: unknown): Invoice['from'] {
   if (!raw || typeof raw !== 'object') {
     return { name: '', email: '', address: '', phone: '', gstin: '', stateName: '', stateCode: '' }
   }
-  const p = raw as Record<string, unknown>
+  const p = { ...(raw as Record<string, unknown>) }
+  delete p._invoiceType
   return {
     name: String(p.name || ''),
     email: String(p.email || ''),
@@ -50,15 +53,17 @@ function normalizeParty(raw: unknown): Invoice['from'] {
     gstin: p.gstin ? String(p.gstin) : undefined,
     stateName: p.stateName ? String(p.stateName) : (p.state_name ? String(p.state_name) : undefined),
     stateCode: p.stateCode ? String(p.stateCode) : (p.state_code ? String(p.state_code) : undefined),
+    logoUrl: p.logoUrl ? String(p.logoUrl) : (p.logo_url ? String(p.logo_url) : undefined),
   }
 }
 
 function normalizeLineItems(raw: unknown): Invoice['lineItems'] {
   if (!Array.isArray(raw)) return []
-  return raw.map((item: any, idx: number) => {
-    const quantity = Number(item?.quantity ?? item?.qty ?? 1) || 0
-    let rate = Number(item?.rate ?? item?.unit_price ?? item?.unitPrice ?? item?.price ?? 0) || 0
-    let amount = Number(item?.amount)
+  return raw.map((itemRaw: unknown, idx: number) => {
+    const item = (itemRaw && typeof itemRaw === 'object' ? itemRaw : {}) as Record<string, unknown>
+    const quantity = Number(item.quantity ?? item.qty ?? 1) || 0
+    let rate = Number(item.rate ?? item.unit_price ?? item.unitPrice ?? item.price ?? 0) || 0
+    let amount = Number(item.amount)
     if (!Number.isFinite(amount) || (amount === 0 && rate > 0)) {
       amount = Math.round((quantity * rate + Number.EPSILON) * 100) / 100
     }
@@ -66,22 +71,27 @@ function normalizeLineItems(raw: unknown): Invoice['lineItems'] {
       rate = Math.round((amount / quantity + Number.EPSILON) * 100) / 100
     }
     return {
-      id: String(item?.id || `item-${idx + 1}`),
-      description: String(item?.description || ''),
+      id: String(item.id || `item-${idx + 1}`),
+      description: String(item.description || ''),
       quantity,
       rate,
       amount: Number.isFinite(amount) ? amount : 0,
-      hsnCode: item?.hsnCode != null ? String(item.hsnCode) : (item?.hsn_code != null ? String(item.hsn_code) : ''),
-      unit: item?.unit ? String(item.unit) : 'Units',
-      gstRate: item?.gstRate != null ? Number(item.gstRate) : (item?.gst_rate != null ? Number(item.gst_rate) : undefined),
+      hsnCode: item.hsnCode != null ? String(item.hsnCode) : (item.hsn_code != null ? String(item.hsn_code) : ''),
+      unit: item.unit ? String(item.unit) : 'Units',
+      gstRate: item.gstRate != null ? Number(item.gstRate) : (item.gst_rate != null ? Number(item.gst_rate) : undefined),
     }
   })
 }
 
 function fromDb(row: DbRow): Invoice {
+  const fromObj = row.from_party && typeof row.from_party === 'object' ? (row.from_party as Record<string, unknown>) : null
+  const rawType = row.invoice_type || (fromObj?._invoiceType as string | undefined) || 'tax_invoice'
+  const invoiceType: InvoiceType = getInvoiceTypeDefinition(rawType).id
+
   return {
     id: row.id,
     invoiceNumber: row.invoice_number,
+    invoiceType,
     status: row.status as Invoice['status'],
     issueDate: row.issue_date,
     dueDate: row.due_date,
@@ -137,12 +147,16 @@ export async function getInvoice(id: string): Promise<Invoice | undefined> {
 }
 
 function invoiceValues(invoice: Invoice) {
+  const invType = invoice.invoiceType ?? 'tax_invoice'
   return {
     invoice_number: invoice.invoiceNumber,
     status: invoice.status,
     issue_date: invoice.issueDate,
     due_date: invoice.dueDate,
-    from_party: invoice.from,
+    from_party: {
+      ...invoice.from,
+      _invoiceType: invType,
+    },
     to_party: invoice.to,
     line_items: invoice.lineItems,
     notes: invoice.notes,
@@ -168,11 +182,19 @@ function invoiceValues(invoice: Invoice) {
 
 export async function createInvoice(invoice: Invoice): Promise<void> {
   const userId = await getUserId()
-  const { error } = await createClient().from('invoices').insert({
+  const invType = invoice.invoiceType ?? 'tax_invoice'
+  const values: Record<string, unknown> = {
     id: invoice.id,
     user_id: userId,
     ...invoiceValues(invoice),
-  })
+    invoice_type: invType,
+  }
+  let { error } = await createClient().from('invoices').insert(values)
+  if (error && /invoice_type/i.test(error.message)) {
+    delete values.invoice_type
+    const retry = await createClient().from('invoices').insert(values)
+    error = retry.error
+  }
   if (error) {
     if (/INVOICE_LIMIT_REACHED/i.test(error.message)) {
       throw new Error('INVOICE_LIMIT_REACHED')
@@ -186,11 +208,25 @@ export async function createInvoice(invoice: Invoice): Promise<void> {
 
 export async function updateInvoice(invoice: Invoice): Promise<void> {
   const userId = await getUserId()
-  const { error } = await createClient()
+  const invType = invoice.invoiceType ?? 'tax_invoice'
+  const values: Record<string, unknown> = {
+    ...invoiceValues(invoice),
+    invoice_type: invType,
+  }
+  let { error } = await createClient()
     .from('invoices')
-    .update(invoiceValues(invoice))
+    .update(values)
     .eq('id', invoice.id)
     .eq('user_id', userId)
+  if (error && /invoice_type/i.test(error.message)) {
+    delete values.invoice_type
+    const retry = await createClient()
+      .from('invoices')
+      .update(values)
+      .eq('id', invoice.id)
+      .eq('user_id', userId)
+    error = retry.error
+  }
   if (error) throw error
 }
 

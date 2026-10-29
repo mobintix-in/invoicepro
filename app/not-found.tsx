@@ -1,17 +1,32 @@
 import Link from 'next/link'
-import BrandLogo from '@/components/BrandLogo'
 
 export default function NotFound() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-slate-50 px-4 py-16 text-center selection:bg-indigo-500 selection:text-white">
       {/* Background glow mesh */}
-      <div className="pointer-events-none absolute -top-32 left-1/2 -z-10 h-96 w-[600px] -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-300/30 to-purple-300/30 blur-3xl" />
+      <div className="pointer-events-none absolute -top-32 left-1/2 -z-10 h-96 w-[600px] -translate-x-1/2 rounded-full bg-gradient-to-r from-rose-200/40 via-amber-200/30 to-indigo-200/30 blur-3xl" />
 
-      <div className="mb-6">
-        <BrandLogo href="/" />
+      {/* 404 Error Logo / Icon */}
+      <div className="mb-6 flex items-center justify-center">
+        <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white shadow-xl shadow-rose-500/25 ring-8 ring-rose-100/70">
+          <svg
+            className="h-10 w-10 text-white drop-shadow-sm"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+            />
+          </svg>
+        </div>
       </div>
 
-      <span className="inline-block rounded-full bg-indigo-100 px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider text-indigo-700">
+      <span className="inline-block rounded-full bg-rose-100 px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider text-rose-700 ring-1 ring-rose-200/60">
         404 — Page Not Found
       </span>
 

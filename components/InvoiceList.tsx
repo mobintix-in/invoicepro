@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { Invoice, InvoiceStatus } from '@/types'
+import { INVOICE_TYPES, getInvoiceTypeDefinition } from '@/types'
 import { getInvoices } from '@/lib/storage'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import StatusBadge from '@/components/StatusBadge'
@@ -12,6 +13,7 @@ type Filter = 'all' | InvoiceStatus
 export default function InvoiceList() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [filter, setFilter] = useState<Filter>('all')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
   const [mounted, setMounted] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -38,8 +40,11 @@ export default function InvoiceList() {
     )
   }
 
-  const filtered =
-    filter === 'all' ? invoices : invoices.filter(inv => inv.status === filter)
+  const filtered = invoices.filter(inv => {
+    const matchesStatus = filter === 'all' || inv.status === filter
+    const matchesType = typeFilter === 'all' || (inv.invoiceType || 'tax_invoice') === typeFilter
+    return matchesStatus && matchesType
+  })
 
   const stats = {
     count: invoices.length,
@@ -95,7 +100,7 @@ export default function InvoiceList() {
       </div>
 
       {/* Filter tabs */}
-      <div className="mt-8 border-b border-gray-200">
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200">
         <nav className="flex gap-x-2 overflow-x-auto" aria-label="Invoice filters">
           {filterOptions.map(f => (
             <button
@@ -122,6 +127,26 @@ export default function InvoiceList() {
             </button>
           ))}
         </nav>
+
+        {/* Invoice Type dropdown filter */}
+        <div className="flex items-center gap-2 pb-2">
+          <label htmlFor="type-filter" className="text-xs font-medium text-gray-500">
+            Type:
+          </label>
+          <select
+            id="type-filter"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          >
+            <option value="all">All Document Types</option>
+            {INVOICE_TYPES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* List */}
@@ -160,12 +185,19 @@ export default function InvoiceList() {
                       className="transition-colors hover:bg-gray-50"
                     >
                       <td className="px-4 py-4">
-                        <Link
-                          href={`/invoices/${inv.id}`}
-                          className="font-semibold text-gray-900 hover:text-indigo-600"
-                        >
-                          {inv.invoiceNumber}
-                        </Link>
+                        <div className="flex flex-col items-start gap-1">
+                          <Link
+                            href={`/invoices/${inv.id}`}
+                            className="font-semibold text-gray-900 hover:text-indigo-600"
+                          >
+                            {inv.invoiceNumber}
+                          </Link>
+                          <span
+                            className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none ${getInvoiceTypeDefinition(inv.invoiceType).badgeClass}`}
+                          >
+                            {getInvoiceTypeDefinition(inv.invoiceType).label}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-700">
                         {inv.to.name || <span className="text-gray-400 italic">No client</span>}
@@ -211,9 +243,16 @@ export default function InvoiceList() {
                   className="block rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:border-indigo-300"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-gray-900">
-                      {inv.invoiceNumber}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-semibold text-gray-900">
+                        {inv.invoiceNumber}
+                      </span>
+                      <span
+                        className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none ${getInvoiceTypeDefinition(inv.invoiceType).badgeClass}`}
+                      >
+                        {getInvoiceTypeDefinition(inv.invoiceType).label}
+                      </span>
+                    </div>
                     <StatusBadge status={inv.status} />
                   </div>
                   <div className="mt-1.5 text-sm text-gray-600">

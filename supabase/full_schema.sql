@@ -129,6 +129,7 @@ create table if not exists public.invoices (
   id                text primary key,
   user_id           uuid not null references auth.users(id) on delete cascade,
   invoice_number    text not null,
+  invoice_type      text not null default 'tax_invoice',
   status            text not null default 'draft'
                       check (status in ('draft', 'sent', 'paid', 'overdue')),
   issue_date        date not null,

@@ -8,6 +8,7 @@ import {
   Image,
 } from "@react-pdf/renderer";
 import type { Invoice } from "@/types";
+import { getInvoiceTypeDefinition } from "@/types";
 import { amountToWords, roundMoney } from "@/lib/utils";
 
 const BW = 0.5;
@@ -100,14 +101,13 @@ function getTaxBreakdown(invoice: Invoice) {
 // 1. STANDARD CLEAN (Classic Zoho Layout)
 // ─────────────────────────────────────────────────────────────────────────────
 function StandardTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
+  const docDef = getInvoiceTypeDefinition(invoice.invoiceType);
   const {
     gstType,
     cgst,
     sgst,
     igst,
     overallEffectiveRate,
-    totalQty,
-    unitLabel,
   } = getTaxBreakdown(invoice);
   return (
     <Page size="A4" style={styles.modernPage}>
@@ -122,6 +122,12 @@ function StandardTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         ]}
       >
         <View style={{ flex: 1, paddingRight: 10 }}>
+          {invoice.from.logoUrl ? (
+            <Image
+              src={invoice.from.logoUrl}
+              style={{ width: 64, height: 44, objectFit: "contain", marginBottom: 6 }}
+            />
+          ) : null}
           <Text style={[styles.bold, { fontSize: 18, color: "#0f172a" }]}>
             {invoice.from.name}
           </Text>
@@ -153,8 +159,21 @@ function StandardTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               },
             ]}
           >
-            INVOICE
+            {docDef.title}
           </Text>
+          {docDef.subtitle ? (
+            <Text
+              style={{
+                fontSize: 7,
+                color: "#64748b",
+                marginTop: 2,
+                maxWidth: 220,
+                textAlign: "right",
+              }}
+            >
+              {docDef.subtitle}
+            </Text>
+          ) : null}
           <Text
             style={[
               styles.bold,
@@ -587,6 +606,7 @@ function StandardTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
 // 2. JAPANESE HANKO STYLE (With Traditional Seal/Stamp Authorization Boxes)
 // ─────────────────────────────────────────────────────────────────────────────
 function JapaneseTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
+  const docDef = getInvoiceTypeDefinition(invoice.invoiceType);
   const { gstType, cgst, sgst, igst, overallEffectiveRate } =
     getTaxBreakdown(invoice);
   return (
@@ -603,6 +623,12 @@ function JapaneseTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         ]}
       >
         <View style={{ flex: 1, paddingRight: 10 }}>
+          {invoice.from.logoUrl ? (
+            <Image
+              src={invoice.from.logoUrl}
+              style={{ width: 64, height: 44, objectFit: "contain", marginBottom: 6 }}
+            />
+          ) : null}
           <Text style={[styles.bold, { fontSize: 18, color: accent }]}>
             {invoice.from.name}
           </Text>
@@ -626,8 +652,23 @@ function JapaneseTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               { fontSize: 13, color: "#0f172a", marginBottom: 4 },
             ]}
           >
-            請求書 (TAX INVOICE)
+            {invoice.invoiceType && invoice.invoiceType !== "tax_invoice"
+              ? docDef.title
+              : "請求書 (TAX INVOICE)"}
           </Text>
+          {docDef.subtitle ? (
+            <Text
+              style={{
+                fontSize: 6.5,
+                color: "#64748b",
+                marginBottom: 4,
+                maxWidth: 180,
+                textAlign: "right",
+              }}
+            >
+              {docDef.subtitle}
+            </Text>
+          ) : null}
           <View style={styles.row}>
             <View
               style={{
@@ -884,11 +925,18 @@ function JapaneseTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
 // 3. EXECUTIVE LUXE TEMPLATE (Double Gold/Accent Rules & Editorial Serif)
 // ─────────────────────────────────────────────────────────────────────────────
 function ExecutiveTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
+  const docDef = getInvoiceTypeDefinition(invoice.invoiceType);
   const { gstType, cgst, sgst, igst, overallEffectiveRate } =
     getTaxBreakdown(invoice);
   return (
     <Page size="A4" style={styles.modernPage}>
       <View style={{ alignItems: "center", marginBottom: 14 }}>
+        {invoice.from.logoUrl ? (
+          <Image
+            src={invoice.from.logoUrl}
+            style={{ width: 64, height: 44, objectFit: "contain", marginBottom: 6 }}
+          />
+        ) : null}
         <Text
           style={[
             styles.bold,
@@ -954,8 +1002,21 @@ function ExecutiveTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         </View>
         <View style={{ alignItems: "flex-end" }}>
           <Text style={[styles.bold, { fontSize: 11, color: "#0f172a" }]}>
-            INVOICE #{invoice.invoiceNumber}
+            {docDef.title} #{invoice.invoiceNumber}
           </Text>
+          {docDef.subtitle ? (
+            <Text
+              style={{
+                fontSize: 6.5,
+                color: "#64748b",
+                marginTop: 1,
+                maxWidth: 180,
+                textAlign: "right",
+              }}
+            >
+              {docDef.subtitle}
+            </Text>
+          ) : null}
           <Text style={{ fontSize: 8, color: "#64748b", marginTop: 2 }}>
             Date: {dateFmt(invoice.issueDate)}
           </Text>
@@ -1205,6 +1266,7 @@ function ExecutiveTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
 // 4. TEXTILE & MANUFACTURING TEMPLATE (Lots, Meters, Shade, GSM)
 // ─────────────────────────────────────────────────────────────────────────────
 function TextileTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
+  const docDef = getInvoiceTypeDefinition(invoice.invoiceType);
   const { gstType, cgst, sgst, igst, overallEffectiveRate, totalQty } =
     getTaxBreakdown(invoice);
   return (
@@ -1223,6 +1285,12 @@ function TextileTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         ]}
       >
         <View style={{ flex: 1 }}>
+          {invoice.from.logoUrl ? (
+            <Image
+              src={invoice.from.logoUrl}
+              style={{ width: 64, height: 44, objectFit: "contain", marginBottom: 4 }}
+            />
+          ) : null}
           <Text style={[styles.bold, { fontSize: 13, color: accent }]}>
             {invoice.from.name}
           </Text>
@@ -1236,10 +1304,25 @@ function TextileTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         </View>
         <View style={{ alignItems: "flex-end" }}>
           <Text style={[styles.bold, { fontSize: 11, color: accent }]}>
-            TEXTILE TAX INVOICE
+            {invoice.invoiceType && invoice.invoiceType !== "tax_invoice"
+              ? docDef.title
+              : "TEXTILE TAX INVOICE"}
           </Text>
+          {docDef.subtitle ? (
+            <Text
+              style={{
+                fontSize: 6.5,
+                color: "#64748b",
+                marginTop: 1,
+                maxWidth: 180,
+                textAlign: "right",
+              }}
+            >
+              {docDef.subtitle}
+            </Text>
+          ) : null}
           <Text style={[styles.bold, { fontSize: 9, marginTop: 2 }]}>
-            Inv #: {invoice.invoiceNumber}
+            {docDef.numberLabel.replace(" Number", "")} #: {invoice.invoiceNumber}
           </Text>
           <Text style={{ fontSize: 7.5, marginTop: 1 }}>
             Date: {dateFmt(invoice.issueDate)}
@@ -1388,7 +1471,7 @@ function TextileTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               { flex: 1, color: accent },
             ]}
           >
-            Total Fabric Meters: {numFmt(totalQty)} | Grand Total
+            Total Quantity: {numFmt(totalQty)} | Grand Total
           </Text>
           <Text
             style={[
@@ -1455,6 +1538,7 @@ function TextileTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
 // 5. RETAIL POS / SLIP TEMPLATE (Clean Slip / POS Style)
 // ─────────────────────────────────────────────────────────────────────────────
 function RetailTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
+  const docDef = getInvoiceTypeDefinition(invoice.invoiceType);
   const { overallEffectiveRate } = getTaxBreakdown(invoice);
   return (
     <Page size="A4" style={styles.modernPage}>
@@ -1467,6 +1551,12 @@ function RetailTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
           marginBottom: 14,
         }}
       >
+        {invoice.from.logoUrl ? (
+          <Image
+            src={invoice.from.logoUrl}
+            style={{ width: 64, height: 44, objectFit: "contain", marginBottom: 6 }}
+          />
+        ) : null}
         <Text style={[styles.bold, { fontSize: 18, color: accent }]}>
           {invoice.from.name}
         </Text>
@@ -1483,11 +1573,19 @@ function RetailTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
             paddingVertical: 2,
             borderRadius: 3,
             marginTop: 4,
+            alignItems: "center",
           }}
         >
           <Text style={[styles.bold, { fontSize: 9, color: accent }]}>
-            RETAIL TAX INVOICE #{invoice.invoiceNumber}
+            {invoice.invoiceType && invoice.invoiceType !== "tax_invoice"
+              ? `${docDef.title} #${invoice.invoiceNumber}`
+              : `RETAIL TAX INVOICE #${invoice.invoiceNumber}`}
           </Text>
+          {docDef.subtitle ? (
+            <Text style={{ fontSize: 6.5, color: "#64748b", marginTop: 1 }}>
+              {docDef.subtitle}
+            </Text>
+          ) : null}
         </View>
       </View>
 
@@ -1659,6 +1757,7 @@ function RetailTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
 // IMPORT EXISTING TEMPLATES FOR DISPATCH
 // ─────────────────────────────────────────────────────────────────────────────
 function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
+  const docDef = getInvoiceTypeDefinition(invoice.invoiceType);
   const {
     gstType,
     cgst,
@@ -1671,6 +1770,39 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
   } = getTaxBreakdown(invoice);
   return (
     <Page size="A4" style={styles.classicPage}>
+      <View
+        style={[
+          styles.b,
+          styles.center,
+          {
+            paddingVertical: 4.5,
+            backgroundColor: `${accent}12`,
+            borderBottomWidth: 0,
+            borderTopWidth: 2.5,
+            borderTopColor: accent,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.bold,
+            { fontSize: 11, letterSpacing: 1.2, color: accent },
+          ]}
+        >
+          {docDef.title}
+        </Text>
+        {docDef.subtitle ? (
+          <Text
+            style={{
+              fontSize: 6.5,
+              color: "#475569",
+              marginTop: 1.5,
+            }}
+          >
+            {docDef.subtitle}
+          </Text>
+        ) : null}
+      </View>
       <View style={styles.row}>
         <View
           style={[
@@ -1679,6 +1811,12 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
             { flex: 6, borderTopWidth: 3, borderTopColor: accent },
           ]}
         >
+          {invoice.from.logoUrl ? (
+            <Image
+              src={invoice.from.logoUrl}
+              style={{ width: 64, height: 44, objectFit: "contain", marginBottom: 4 }}
+            />
+          ) : null}
           <Text style={[styles.bold, { fontSize: 12, color: accent }]}>
             {invoice.from.name || "SELLER NAME"}
           </Text>
@@ -1704,7 +1842,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         <View style={{ flex: 4 }}>
           <View style={styles.row}>
             <View style={[styles.b, styles.p3, { flex: 1 }]}>
-              <Text style={styles.bold}>Invoice No.</Text>
+              <Text style={styles.bold}>{docDef.numberLabel}</Text>
               <Text
                 style={[
                   styles.bold,

@@ -5,8 +5,9 @@ import { useRouter, notFound } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { Invoice, InvoiceStatus } from "@/types";
+import { getInvoiceTypeDefinition } from "@/types";
 import { getInvoice, updateInvoice, deleteInvoice } from "@/lib/storage";
-import { getMyProfile, updateMyProfile } from "@/lib/account";
+import { getMyProfile } from "@/lib/account";
 
 const InvoicePDFButton = dynamic(
   () => import("@/components/InvoicePDFButton"),
@@ -175,25 +176,32 @@ export default function InvoicePreview({ id }: { id: string }) {
     <div className="mx-auto max-w-4xl space-y-4">
       {/* Top Action Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link
-          href="/"
-          className="flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-800"
-        >
-          <svg
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-800"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
-            />
-          </svg>
-          All Invoices
-        </Link>
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
+              />
+            </svg>
+            All Invoices
+          </Link>
+          <span
+            className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${getInvoiceTypeDefinition(invoice.invoiceType).badgeClass}`}
+          >
+            {getInvoiceTypeDefinition(invoice.invoiceType).label}
+          </span>
+        </div>
 
         <div className="flex flex-wrap gap-2">
           {invoice.status !== "paid" && (
