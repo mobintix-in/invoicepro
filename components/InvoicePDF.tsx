@@ -201,10 +201,11 @@ function StandardTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         </View>
       </View>
 
-      <View style={[styles.row, { gap: 12, marginBottom: 16 }]}>
+      <View style={[styles.row, { marginBottom: 16 }]}>
         <View
           style={{
             flex: 1,
+            marginRight: 12,
             backgroundColor: "#f8fafc",
             padding: 10,
             borderRadius: 6,
@@ -414,11 +415,12 @@ function StandardTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
       </View>
 
       <View
-        style={[styles.row, { gap: 12, marginTop: "auto", marginBottom: 12 }]}
+        style={[styles.row, { marginTop: "auto", marginBottom: 12 }]}
       >
         <View
           style={{
             flex: 1,
+            marginRight: 12,
             backgroundColor: "#f8fafc",
             padding: 10,
             borderRadius: 6,
@@ -841,11 +843,12 @@ function JapaneseTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
 
       {/* Bottom Summary */}
       <View
-        style={[styles.row, { gap: 12, marginTop: "auto", marginBottom: 10 }]}
+        style={[styles.row, { marginTop: "auto", marginBottom: 10 }]}
       >
         <View
           style={{
             flex: 1,
+            marginRight: 12,
             padding: 8,
             borderWidth: 0.8,
             borderColor: "#cbd5e1",
@@ -1163,11 +1166,12 @@ function ExecutiveTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
 
       {/* Summary */}
       <View
-        style={[styles.row, { gap: 12, marginTop: "auto", marginBottom: 12 }]}
+        style={[styles.row, { marginTop: "auto", marginBottom: 12 }]}
       >
         <View
           style={{
             flex: 1,
+            marginRight: 12,
             padding: 10,
             backgroundColor: "#f8fafc",
             borderRadius: 4,
@@ -1336,9 +1340,7 @@ function TextileTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         </View>
         <View style={{ alignItems: "flex-end" }}>
           <Text style={[styles.bold, { fontSize: 11, color: accent }]}>
-            {invoice.invoiceType && invoice.invoiceType !== "tax_invoice"
-              ? docDef.title
-              : "TEXTILE TAX INVOICE"}
+            {docDef.title}
           </Text>
           {docDef.subtitle ? (
             <Text
@@ -1398,7 +1400,7 @@ function TextileTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               { flex: 1, color: accent },
             ]}
           >
-            Quality / Construction / Shade / Lot Description
+            Item Description
           </Text>
           <Text
             style={[
@@ -1431,7 +1433,7 @@ function TextileTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               { width: 55, color: accent },
             ]}
           >
-            Meters/Qty
+            Quantity
           </Text>
           <Text
             style={[
