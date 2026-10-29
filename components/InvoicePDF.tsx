@@ -1840,105 +1840,132 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
           style={[
             styles.b,
             styles.p4,
-            { flex: 6, borderTopWidth: 3, borderTopColor: accent },
+            {
+              flex: 6,
+              minHeight: 90,
+              borderTopWidth: 3,
+              borderTopColor: accent,
+              borderRightWidth: 0,
+            },
           ]}
         >
           {invoice.from.logoUrl ? (
             <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
               <Image
                 src={invoice.from.logoUrl}
-                style={{ width: 44, height: 44, objectFit: "contain", marginRight: 8 }}
+                style={{ width: 42, height: 42, objectFit: "contain", marginRight: 8 }}
               />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.bold, { fontSize: 12, color: accent }]}>
+                <Text style={[styles.bold, { fontSize: 11, color: accent }]}>
                   {invoice.from.name || "SELLER NAME"}
                 </Text>
                 {invoice.from.address ? (
-                  <Text style={styles.mt2}>{invoice.from.address}</Text>
+                  <Text style={[styles.mt2, { fontSize: 7.5, color: "#475569" }]}>
+                    {invoice.from.address}
+                  </Text>
                 ) : null}
-                {invoice.from.phone ? <Text>Ph: {invoice.from.phone}</Text> : null}
+                {invoice.from.phone ? (
+                  <Text style={{ fontSize: 7.5, color: "#475569" }}>
+                    Ph: {invoice.from.phone}
+                  </Text>
+                ) : null}
                 {invoice.from.gstin ? (
-                  <Text style={styles.mt2}>
+                  <Text style={[styles.mt2, { fontSize: 7.5, color: "#475569" }]}>
                     GSTIN/UIN: <Text style={styles.bold}>{invoice.from.gstin}</Text>
                   </Text>
                 ) : null}
                 {invoice.from.stateName ? (
-                  <Text>
+                  <Text style={{ fontSize: 7.5, color: "#475569" }}>
                     State Name : {invoice.from.stateName}
-                    {invoice.from.stateCode
-                      ? `, Code : ${invoice.from.stateCode}`
-                      : " "}
+                    {invoice.from.stateCode ? `, Code : ${invoice.from.stateCode}` : ""}
                   </Text>
                 ) : null}
               </View>
             </View>
           ) : (
-            <>
-              <Text style={[styles.bold, { fontSize: 12, color: accent }]}>
+            <View>
+              <Text style={[styles.bold, { fontSize: 11, color: accent }]}>
                 {invoice.from.name || "SELLER NAME"}
               </Text>
               {invoice.from.address ? (
-                <Text style={styles.mt2}>{invoice.from.address}</Text>
+                <Text style={[styles.mt2, { fontSize: 7.5, color: "#475569" }]}>
+                  {invoice.from.address}
+                </Text>
               ) : null}
-              {invoice.from.phone ? <Text>Ph: {invoice.from.phone}</Text> : null}
+              {invoice.from.phone ? (
+                <Text style={{ fontSize: 7.5, color: "#475569" }}>
+                  Ph: {invoice.from.phone}
+                </Text>
+              ) : null}
               {invoice.from.gstin ? (
-                <Text style={styles.mt2}>
+                <Text style={[styles.mt2, { fontSize: 7.5, color: "#475569" }]}>
                   GSTIN/UIN: <Text style={styles.bold}>{invoice.from.gstin}</Text>
                 </Text>
               ) : null}
               {invoice.from.stateName ? (
-                <Text>
+                <Text style={{ fontSize: 7.5, color: "#475569" }}>
                   State Name : {invoice.from.stateName}
-                  {invoice.from.stateCode
-                    ? `, Code : ${invoice.from.stateCode}`
-                    : " "}
+                  {invoice.from.stateCode ? `, Code : ${invoice.from.stateCode}` : ""}
                 </Text>
               ) : null}
-            </>
+            </View>
           )}
         </View>
 
         <View style={{ flex: 4 }}>
-          <View style={styles.row}>
-            <View style={[styles.b, styles.p3, { flex: 1 }]}>
-              <Text style={styles.bold}>{docDef.numberLabel}</Text>
+          <View style={[styles.row, { height: 30 }]}>
+            <View
+              style={[
+                styles.b,
+                styles.p3,
+                { flex: 1, borderTopWidth: 3, borderTopColor: accent },
+              ]}
+            >
+              <Text style={[styles.bold, { fontSize: 7 }]}>{docDef.numberLabel}</Text>
               <Text
                 style={[
                   styles.bold,
-                  { fontSize: 10, marginTop: 2, color: accent },
+                  { fontSize: 9.5, marginTop: 1, color: accent },
                 ]}
               >
                 {invoice.invoiceNumber || " "}
               </Text>
             </View>
-            <View style={[styles.b, styles.p3, { flex: 1 }]}>
-              <Text style={styles.bold}>Dated</Text>
-              <Text style={styles.mt2}>{dateFmt(invoice.issueDate)}</Text>
+            <View
+              style={[
+                styles.b,
+                styles.p3,
+                { flex: 1, borderLeftWidth: 0, borderTopWidth: 3, borderTopColor: accent },
+              ]}
+            >
+              <Text style={[styles.bold, { fontSize: 7 }]}>Dated</Text>
+              <Text style={{ fontSize: 8, marginTop: 1 }}>{dateFmt(invoice.issueDate)}</Text>
             </View>
           </View>
-          <View style={styles.row}>
-            <View style={[styles.b, styles.p3, { flex: 1 }]}>
-              <Text style={styles.bold}>Delivery Note</Text>
-              <Text style={styles.mt2}>{invoice.deliveryNote || " "}</Text>
+          <View style={[styles.row, { height: 30 }]}>
+            <View style={[styles.b, styles.p3, { flex: 1, borderTopWidth: 0 }]}>
+              <Text style={[styles.bold, { fontSize: 7 }]}>Delivery Note</Text>
+              <Text style={{ fontSize: 8, marginTop: 1 }}>{invoice.deliveryNote || "—"}</Text>
             </View>
-            <View style={[styles.b, styles.p3, { flex: 1 }]}>
-              <Text style={styles.bold}>Mode of Payment</Text>
+            <View style={[styles.b, styles.p3, { flex: 1, borderLeftWidth: 0, borderTopWidth: 0 }]}>
+              <Text style={[styles.bold, { fontSize: 7 }]}>Mode of Payment</Text>
+              <Text style={{ fontSize: 8, marginTop: 1 }}>Bank / UPI</Text>
             </View>
           </View>
-          <View style={styles.row}>
-            <View style={[styles.b, styles.p3, { flex: 1 }]}>
-              <Text style={styles.bold}>Buyer Order No.</Text>
-              <Text style={styles.mt2}>{invoice.buyerOrderNo || " "}</Text>
+          <View style={[styles.row, { height: 30 }]}>
+            <View style={[styles.b, styles.p3, { flex: 1, borderTopWidth: 0 }]}>
+              <Text style={[styles.bold, { fontSize: 7 }]}>Buyer Order No.</Text>
+              <Text style={{ fontSize: 8, marginTop: 1 }}>{invoice.buyerOrderNo || "—"}</Text>
             </View>
-            <View style={[styles.b, styles.p3, { flex: 1 }]}>
-              <Text style={styles.bold}>Destination</Text>
-              <Text style={styles.mt2}>{invoice.destination || " "}</Text>
+            <View style={[styles.b, styles.p3, { flex: 1, borderLeftWidth: 0, borderTopWidth: 0 }]}>
+              <Text style={[styles.bold, { fontSize: 7 }]}>Destination</Text>
+              <Text style={{ fontSize: 8, marginTop: 1 }}>{invoice.destination || "—"}</Text>
             </View>
           </View>
         </View>
       </View>
 
-      <View style={[styles.b, styles.p4]}>
+      <View style={[styles.b, styles.p4, { borderTopWidth: 0 }]}>
         <Text style={{ fontSize: 7.5, color: "#4b5563" }}>
           Consignee (Ship to)
         </Text>
@@ -1957,7 +1984,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
 
       <View style={{ minHeight: 180 }}>
         <View
-          style={[styles.row, styles.b, { backgroundColor: `${accent}15` }]}
+          style={[styles.row, styles.b, { backgroundColor: `${accent}15`, borderTopWidth: 0 }]}
         >
           <Text
             style={[
@@ -1965,7 +1992,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               styles.center,
               styles.p3,
               styles.br,
-              { width: 26, color: accent },
+              { width: 24, color: accent },
             ]}
           >
             Sr{"\n"}No.
@@ -1986,7 +2013,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               styles.center,
               styles.p3,
               styles.br,
-              { width: 48, color: accent },
+              { width: 46, color: accent },
             ]}
           >
             HSN/SAC
@@ -1997,7 +2024,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               styles.center,
               styles.p3,
               styles.br,
-              { width: 32, color: accent },
+              { width: 36, color: accent },
             ]}
           >
             GST{"\n"}Rate
@@ -2008,7 +2035,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               styles.center,
               styles.p3,
               styles.br,
-              { width: 56, color: accent },
+              { width: 48, color: accent },
             ]}
           >
             Quantity
@@ -2019,7 +2046,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               styles.center,
               styles.p3,
               styles.br,
-              { width: 48, color: accent },
+              { width: 46, color: accent },
             ]}
           >
             Rate
@@ -2030,7 +2057,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               styles.center,
               styles.p3,
               styles.br,
-              { width: 32, color: accent },
+              { width: 42, color: accent },
             ]}
           >
             per
@@ -2040,7 +2067,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               styles.bold,
               styles.right,
               styles.p3,
-              { width: 62, color: accent },
+              { width: 64, color: accent },
             ]}
           >
             Amount
@@ -2060,11 +2087,11 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
                 styles.bl,
                 styles.br,
                 styles.bb,
-                { minHeight: 20 },
+                { minHeight: 18 },
               ]}
             >
               <Text
-                style={[styles.center, styles.p3, styles.br, { width: 26 }]}
+                style={[styles.center, styles.p3, styles.br, { width: 24 }]}
               >
                 {i + 1}
               </Text>
@@ -2072,30 +2099,28 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
                 {item.description || " "}
               </Text>
               <Text
-                style={[styles.center, styles.p3, styles.br, { width: 48 }]}
+                style={[styles.center, styles.p3, styles.br, { width: 46 }]}
               >
                 {item.hsnCode || " "}
               </Text>
               <Text
-                style={[styles.center, styles.p3, styles.br, { width: 32 }]}
+                style={[styles.center, styles.p3, styles.br, { width: 36 }]}
               >
                 {itemRate > 0 ? `${itemRate}%` : " "}
               </Text>
-              <Text style={[styles.right, styles.p3, styles.br, { width: 56 }]}>
-                {numFmt(item.quantity)}
-                {"\n"}
-                {item.unit || unitLabel}
-              </Text>
               <Text style={[styles.right, styles.p3, styles.br, { width: 48 }]}>
+                {numFmt(item.quantity)}
+              </Text>
+              <Text style={[styles.right, styles.p3, styles.br, { width: 46 }]}>
                 {numFmt(item.rate)}
               </Text>
               <Text
-                style={[styles.center, styles.p3, styles.br, { width: 32 }]}
+                style={[styles.center, styles.p3, styles.br, { width: 42 }]}
               >
-                {item.unit || unitLabel}
+                {item.unit || unitLabel || "Pcs"}
               </Text>
               <Text
-                style={[styles.right, styles.bold, styles.p3, { width: 62 }]}
+                style={[styles.right, styles.bold, styles.p3, { width: 64 }]}
               >
                 {numFmt(item.amount)}
               </Text>
@@ -2106,7 +2131,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         <View
           style={[styles.row, styles.b, { backgroundColor: `${accent}12` }]}
         >
-          <Text style={[styles.p3, styles.br, { width: 26 }]}> </Text>
+          <Text style={[styles.p3, styles.br, { width: 24 }]}> </Text>
           <Text
             style={[
               styles.bold,
@@ -2118,29 +2143,37 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
           >
             Total
           </Text>
-          <Text style={[styles.p3, styles.br, { width: 48 }]}> </Text>
-          <Text style={[styles.p3, styles.br, { width: 32 }]}> </Text>
+          <Text style={[styles.p3, styles.br, { width: 46 }]}> </Text>
+          <Text style={[styles.p3, styles.br, { width: 36 }]}> </Text>
           <Text
             style={[
               styles.bold,
               styles.right,
               styles.p3,
               styles.br,
-              { width: 56 },
+              { width: 48 },
             ]}
           >
             {numFmt(totalQty)}
-            {"\n"}
-            {unitLabel}
           </Text>
-          <Text style={[styles.p3, styles.br, { width: 48 }]}> </Text>
-          <Text style={[styles.p3, styles.br, { width: 32 }]}> </Text>
+          <Text style={[styles.p3, styles.br, { width: 46 }]}> </Text>
+          <Text
+            style={[
+              styles.bold,
+              styles.center,
+              styles.p3,
+              styles.br,
+              { width: 42 },
+            ]}
+          >
+            {unitLabel || "Pcs"}
+          </Text>
           <Text
             style={[
               styles.bold,
               styles.right,
               styles.p3,
-              { width: 62, color: accent, fontSize: 9 },
+              { width: 64, color: accent, fontSize: 9 },
             ]}
           >
             {numFmt(invoice.total)}
@@ -2162,7 +2195,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
             styles.center,
             styles.p3,
             styles.br,
-            { width: 65, color: accent },
+            { width: 75, color: accent },
           ]}
         >
           HSN/SAC
@@ -2170,7 +2203,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         <Text
           style={[
             styles.bold,
-            styles.center,
+            styles.right,
             styles.p3,
             styles.br,
             { flex: 1, color: accent },
@@ -2181,9 +2214,9 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         <Text
           style={[
             styles.bold,
-            styles.center,
+            styles.right,
             styles.p3,
-            { width: 110, color: accent },
+            { width: 130, color: accent },
           ]}
         >
           Total Tax (GST)
@@ -2191,14 +2224,15 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
       </View>
       {hsnRows.map(([key, { code, taxable, rate, tax: itemTax }]) => (
         <View key={key} style={[styles.row, styles.bl, styles.br, styles.bb]}>
-          <Text style={[styles.center, styles.p3, styles.br, { width: 65 }]}>
+          <Text style={[styles.center, styles.p3, styles.br, { width: 75 }]}>
             {code}
           </Text>
           <Text style={[styles.right, styles.p3, styles.br, { flex: 1 }]}>
             {numFmt(taxable)}
           </Text>
-          <Text style={[styles.right, styles.p3, { width: 110 }]}>
-            {rate}% : {numFmt(itemTax)}
+          <Text style={[styles.right, styles.p3, { width: 130 }]}>
+            {rate != null && rate > 0 ? `${rate}% : ` : ""}
+            {numFmt(itemTax)}
           </Text>
         </View>
       ))}
@@ -2207,10 +2241,8 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
       <View
         style={[
           styles.row,
-          styles.bl,
-          styles.br,
-          styles.bb,
-          { minHeight: 85, marginTop: 4 },
+          styles.b,
+          { minHeight: 70, marginTop: 4 },
         ]}
       >
         <View style={[styles.p4, styles.br, { flex: 1 }]}>
@@ -2238,7 +2270,7 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
               </Text>
             </View>
           ) : null}
-          <Text style={[styles.bold]}>Declaration</Text>
+          <Text style={[styles.bold, { fontSize: 7 }]}>Declaration</Text>
           <Text style={{ fontSize: 6, color: "#4b5563", marginTop: 1 }}>
             We declare that this invoice shows actual price and all particulars
             are true.
@@ -2247,31 +2279,50 @@ function ClassicGSTTemplate({ invoice, accent, qrDataUrl }: TemplateProps) {
         <View
           style={[
             styles.p4,
-            { flex: 1, flexDirection: "row", justifyContent: "space-between" },
+            { flex: 1, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
           ]}
         >
-          <View style={{ flex: 1, paddingRight: 4 }}>
-            <Text style={[styles.bold, { color: accent }]}>Bank Details</Text>
-            <Text style={{ fontSize: 7.5, marginTop: 2 }}>
-              {invoice.bankName} | A/c: {invoice.accountNumber} | IFSC:{" "}
-              {invoice.ifscCode}
-            </Text>
+          <View style={{ flex: 1, paddingRight: 6 }}>
+            <Text style={[styles.bold, { color: accent, fontSize: 8 }]}>Bank Details</Text>
+            {invoice.bankName ? (
+              <Text style={{ fontSize: 7.5, marginTop: 2, color: "#1e293b" }}>
+                {invoice.bankName}
+              </Text>
+            ) : null}
+            {invoice.accountNumber ? (
+              <Text style={{ fontSize: 7, marginTop: 1, color: "#475569" }}>
+                A/c: <Text style={styles.bold}>{invoice.accountNumber}</Text>
+              </Text>
+            ) : null}
+            {invoice.ifscCode ? (
+              <Text style={{ fontSize: 7, marginTop: 1, color: "#475569" }}>
+                IFSC: <Text style={styles.bold}>{invoice.ifscCode}</Text>
+              </Text>
+            ) : null}
+            {invoice.bankBranch ? (
+              <Text style={{ fontSize: 7, marginTop: 1, color: "#475569" }}>
+                Branch: {invoice.bankBranch}
+              </Text>
+            ) : null}
           </View>
           {qrDataUrl ? (
-            <Image src={qrDataUrl} style={{ width: 50, height: 50 }} />
+            <Image src={qrDataUrl} style={{ width: 48, height: 48 }} />
           ) : null}
         </View>
       </View>
 
       <View
-        style={[styles.row, styles.bl, styles.br, styles.bb, { minHeight: 40 }]}
+        style={[styles.row, styles.bl, styles.br, styles.bb, { minHeight: 36 }]}
       >
-        <View style={[styles.p4, styles.br, { flex: 1 }]}>
-          <Text style={{ fontSize: 7 }}>Customer&apos;s Seal</Text>
+        <View style={[styles.p4, styles.br, { flex: 1, justifyContent: "flex-end" }]}>
+          <Text style={{ fontSize: 7, color: "#64748b" }}>Customer&apos;s Seal &amp; Signature</Text>
         </View>
-        <View style={[styles.p4, { flex: 1, alignItems: "flex-end" }]}>
-          <Text style={[styles.bold, { color: accent }]}>
+        <View style={[styles.p4, { flex: 1, alignItems: "flex-end", justifyContent: "space-between" }]}>
+          <Text style={[styles.bold, { color: accent, fontSize: 8 }]}>
             For {invoice.from.name}
+          </Text>
+          <Text style={{ fontSize: 7, color: "#64748b", marginTop: 10 }}>
+            Authorized Signatory
           </Text>
         </View>
       </View>
