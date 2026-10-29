@@ -28,6 +28,7 @@ import {
   getMonthlyEquivalent,
 } from "@/lib/packages";
 import { parseGstin } from "@/lib/gstin";
+import { compressImage } from "@/lib/utils";
 import InvoiceThemePicker from "@/components/InvoiceThemePicker";
 
 const inputCls =
@@ -439,24 +440,18 @@ function ProfileContent() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        if (file.size > 2 * 1024 * 1024) {
-                          alert("Please choose an image under 2MB.");
-                          return;
-                        }
-                        const reader = new FileReader();
-                        reader.onload = (evt) => {
-                          const dataUrl = evt.target?.result as string;
-                          if (dataUrl) {
-                            set("logoUrl", dataUrl);
-                            if (typeof window !== "undefined") {
-                              localStorage.setItem("business_logo", dataUrl);
-                            }
+                        try {
+                          const dataUrl = await compressImage(file, 280, 280, 0.85);
+                          set("logoUrl", dataUrl);
+                          if (typeof window !== "undefined") {
+                            localStorage.setItem("business_logo", dataUrl);
                           }
-                        };
-                        reader.readAsDataURL(file);
+                        } catch (err) {
+                          console.error("Failed to process logo:", err);
+                        }
                       }}
                     />
                   </label>

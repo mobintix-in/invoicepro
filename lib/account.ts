@@ -180,9 +180,6 @@ export async function getMyProfile(): Promise<Profile | null> {
   }
 
   let parsedLogo = ''
-  if (user?.user_metadata?.logo_url) {
-    parsedLogo = user.user_metadata.logo_url
-  }
   if (typeof window !== 'undefined') {
     const localTmpl = localStorage.getItem('invoice_template')
     if (localTmpl) parsedTemplate = localTmpl
@@ -231,10 +228,13 @@ export async function updateMyProfile(input: ProfileInput): Promise<void> {
     }
   }
 
+  // Never store base64 logos in auth user_metadata because Supabase puts user_metadata
+  // into the session JWT cookie. Bloated cookies exceed Vercel/reverse-proxy header limits
+  // and trigger HTTP 494 REQUEST_HEADER_TOO_LARGE.
   try {
-    if (input.logoUrl !== undefined) {
+    if (user.user_metadata?.logo_url) {
       await createClient().auth.updateUser({
-        data: { logo_url: input.logoUrl }
+        data: { logo_url: null },
       })
     }
   } catch {}

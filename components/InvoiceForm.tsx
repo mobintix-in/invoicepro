@@ -8,7 +8,7 @@ import { createInvoice, updateInvoice, nextInvoiceNumber, getInvoiceQuota, type 
 import { getMyProfile } from '@/lib/account'
 import { listClients, saveClient, type Client } from '@/lib/clients'
 import { parseGstin, lookupGstin } from '@/lib/gstin'
-import { generateId, today, daysFromNow, formatCurrency, roundMoney } from '@/lib/utils'
+import { generateId, today, daysFromNow, formatCurrency, roundMoney, compressImage } from '@/lib/utils'
 
 const inputCls =
   'block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'
@@ -1098,15 +1098,15 @@ function PartySection({
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0]
                       if (!file) return
-                      const reader = new FileReader()
-                      reader.onload = (evt) => {
-                        const dataUrl = evt.target?.result as string
-                        if (dataUrl) onChange({ ...party, logoUrl: dataUrl })
+                      try {
+                        const dataUrl = await compressImage(file, 280, 280, 0.85)
+                        onChange({ ...party, logoUrl: dataUrl })
+                      } catch (err) {
+                        console.error("Failed to process logo:", err)
                       }
-                      reader.readAsDataURL(file)
                     }}
                   />
                 </label>
